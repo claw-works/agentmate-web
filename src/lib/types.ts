@@ -120,6 +120,67 @@ export interface SkillVersion {
   published_at: string
 }
 
+export type SkillSourceType = "git" | "local"
+export type SkillSyncMode = "server_pull" | "client_push"
+export type SkillVisibility = "private" | "shared" | "public"
+export type SkillSourceStatus = "active" | "disabled" | "error"
+
+export interface SkillSource {
+  id: string
+  user_id?: string
+  name: string
+  type: SkillSourceType
+  repository_url: string
+  package_path: string
+  default_ref: string
+  sync_mode: SkillSyncMode
+  visibility: SkillVisibility
+  status: SkillSourceStatus
+  metadata?: unknown
+  created_at: string
+  updated_at: string
+}
+
+export interface SkillSourceRevision {
+  id: string
+  user_id?: string
+  source_id: string
+  skill_version_id?: string
+  commit_sha: string
+  local_snapshot_id: string
+  tree_hash: string
+  package_hash: string
+  status: string
+  error?: string
+  created_at: string
+}
+
+export interface SkillVersionFile {
+  id: string
+  user_id?: string
+  source_revision_id: string
+  version_id?: string
+  path: string
+  kind: string
+  sha256: string
+  size_bytes: number
+  mime_type: string
+  indexable: boolean
+  content_snapshot?: string
+  created_at: string
+}
+
+export interface CreateSkillSourceRequest {
+  name?: string
+  type: SkillSourceType
+  repository_url: string
+  package_path?: string
+  default_ref?: string
+  sync_mode?: SkillSyncMode
+  visibility?: SkillVisibility
+  status?: SkillSourceStatus
+}
+
 export type SkillSignal = SkillLog
 
 export interface CreateSkillVersionRequest {

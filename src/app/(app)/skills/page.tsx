@@ -8,24 +8,34 @@ import {
   Clock3,
   Database,
   FileCode2,
+  Files,
   GitBranch,
+  HardDrive,
+  Link2,
   Loader2,
+  Package,
   Plus,
   RefreshCw,
   Search,
+  Server,
   Target,
+  UploadCloud,
   Zap,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { useI18n } from "@/lib/i18n"
 import {
   CreateSkillVersionRequest,
+  CreateSkillSourceRequest,
   IndexSkillsResponse,
   SkillLog,
   SkillSearchItem,
   SkillSignal,
+  SkillSource,
+  SkillSourceRevision,
   SkillStats,
   SkillVersion,
+  SkillVersionFile,
 } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,6 +55,8 @@ interface SkillItem {
   description: string
   activeVersion: string | null
   activePublishedAt: string | null
+  sourceCount: number
+  repositories: string[]
   versionCount: number
   total: number
   success: number
@@ -52,6 +64,11 @@ interface SkillItem {
   partial: number
   corrected: number
   lastRun: string
+}
+
+interface SourceBundle {
+  source: SkillSource
+  revisions: SkillSourceRevision[]
 }
 
 type Notice = {
@@ -64,10 +81,12 @@ const ALL_INDEX_TARGET = "__all__"
 export default function SkillsPage() {
   const { t } = useI18n()
   const [skills, setSkills] = useState<SkillItem[]>([])
+  const [sourceBundles, setSourceBundles] = useState<SourceBundle[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [stats, setStats] = useState<SkillStats | null>(null)
   const [signals, setSignals] = useState<SkillSignal[]>([])
   const [versions, setVersions] = useState<SkillVersion[]>([])
+  const [versionFiles, setVersionFiles] = useState<Record<string, SkillVersionFile[]>>({})
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<SkillSearchItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,22 +94,34 @@ export default function SkillsPage() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [indexingTarget, setIndexingTarget] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [sourceSheetOpen, setSourceSheetOpen] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const selectedSkill = useMemo(
     () => skills.find((skill) => skill.name === selected) ?? null,
     [skills, selected]
   )
+  const selectedSourceBundles = useMemo(
+    () => (selected ? sourceBundlesForSkill(selected, versions, sourceBundles) : []),
+    [selected, sourceBundles, versions]
+  )
+  const selectedFiles = useMemo(() => {
+    const active = versions.find((version) => version.is_active) ?? versions[0]
+    return active ? versionFiles[active.id] ?? [] : []
+  }, [versionFiles, versions])
 
   const load = useCallback(async () => {
     setLoading(true)
     setNotice(null)
     try {
-      const [versionsData, logsData] = await Promise.all([
+      const [versionsData, logsData, sourcesData] = await Promise.all([
         api.listSkillVersions({ limit: 100 }),
         api.listSkillLogs({ limit: 200 }),
+        api.listSkillSources({ limit: 100 }),
       ])
-      setSkills(buildSkillItems(versionsData ?? [], logsData ?? []))
+      const bundles = await loadSourceBundles(sourcesData ?? [])
+      setSourceBundles(bundles)
+      setSkills(buildSkillItems(versionsData ?? [], logsData ?? [], bundles))
     } catch (err) {
       setNotice({ tone: "error", text: errorMessage(err) })
     } finally {
@@ -107,14 +138,26 @@ export default function SkillsPage() {
         api.listSkillSignals(name, 20),
         api.listSkillVersions({ skill_name: name, limit: 50 }),
       ])
+      const sortedVersions = sortVersions(nextVersions ?? [])
+      const filePairs = await Promise.all(
+        sortedVersions.map(async (version) => {
+          try {
+            return [version.id, await api.listSkillVersionFiles(version.id)] as const
+          } catch {
+            return [version.id, []] as const
+          }
+        })
+      )
       setStats(nextStats)
       setSignals(nextSignals ?? [])
-      setVersions(sortVersions(nextVersions ?? []))
+      setVersions(sortedVersions)
+      setVersionFiles(Object.fromEntries(filePairs))
     } catch (err) {
       setNotice({ tone: "error", text: errorMessage(err) })
       setStats(null)
       setSignals([])
       setVersions([])
+      setVersionFiles({})
     } finally {
       setDetailLoading(false)
     }
@@ -190,6 +233,16 @@ export default function SkillsPage() {
     await loadDetail(skillName)
   }
 
+  const handleSourceCreated = async (source: SkillSource) => {
+    setSourceSheetOpen(false)
+    setNotice({ tone: "success", text: `来源「${source.name}」已注册。` })
+    await load()
+    const nextSkill = selected ?? source.name
+    if (nextSkill) {
+      await loadDetail(nextSkill)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -204,6 +257,15 @@ export default function SkillsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSourceSheetOpen(true)}
+            className="border-[#2a2a3a] bg-[#12121a] text-slate-200 hover:bg-[#1a1a24]"
+          >
+            <UploadCloud className="size-4" />
+            注册来源
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -278,7 +340,7 @@ export default function SkillsPage() {
           <div className="flex items-center justify-between border-b border-[#1e1e2e] px-4 py-3">
             <div>
               <h2 className="text-sm font-medium text-slate-200">技能目录</h2>
-              <p className="text-xs text-slate-600">{skills.length} 个技能</p>
+              <p className="text-xs text-slate-600">{skills.length} 个技能 · {sourceBundles.length} 个来源</p>
             </div>
             <Button
               type="button"
@@ -323,9 +385,15 @@ export default function SkillsPage() {
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                     <span>{skill.versionCount} versions</span>
+                    <span>{skill.sourceCount} sources</span>
                     <span>{skill.total} runs</span>
-                    <span>{skill.lastRun ? formatDate(skill.lastRun) : "never"}</span>
                   </div>
+                  {skill.repositories.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-slate-600">
+                      <Link2 className="size-3.5 shrink-0" />
+                      <span className="truncate">{skill.repositories[0]}</span>
+                    </div>
+                  )}
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#1b1b28]">
                     <div className="h-full rounded-full bg-emerald-400" style={{ width: `${successPercent(skill)}%` }} />
                   </div>
@@ -373,6 +441,8 @@ export default function SkillsPage() {
                     <Metric label={t.skills.failureRate} value={formatPercent(stats?.failure_rate ?? 0)} icon={<AlertTriangle className="size-4" />} tone="red" />
                     <Metric label={t.skills.correctionRate} value={formatPercent(stats?.correction_rate ?? 0)} icon={<RefreshCw className="size-4" />} tone="amber" />
                   </div>
+
+                  <SourcePanel bundles={selectedSourceBundles} files={selectedFiles} />
 
                   <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
                     <div className="space-y-3">
@@ -433,7 +503,263 @@ export default function SkillsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={sourceSheetOpen} onOpenChange={setSourceSheetOpen}>
+        <SheetContent side="right" style={{ width: "640px", maxWidth: "95vw" }} className="overflow-y-auto border-[#242436] bg-[#101018]">
+          <SheetHeader>
+            <SheetTitle>注册技能来源</SheetTitle>
+            <SheetDescription>登记 git repo 或本地目录，让 AgentMate 负责后续检索和同步记录。</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-4">
+            <SkillSourceForm
+              defaultName={selected ?? ""}
+              onDone={handleSourceCreated}
+              onCancel={() => setSourceSheetOpen(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
+  )
+}
+
+function SourcePanel({ bundles, files }: { bundles: SourceBundle[]; files: SkillVersionFile[] }) {
+  return (
+    <section className="rounded-lg border border-[#1e1e2e] bg-[#0b0b12]">
+      <div className="flex flex-col gap-2 border-b border-[#1e1e2e] p-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
+          <HardDrive className="size-4 text-cyan-300" />
+          来源与包
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span>{bundles.length} sources</span>
+          <span>{files.length} files</span>
+        </div>
+      </div>
+
+      {bundles.length === 0 && files.length === 0 ? (
+        <div className="p-5 text-sm text-slate-500">还没有关联 repo/source。可以先注册 git 或 local 来源。</div>
+      ) : (
+        <div className="grid gap-4 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.7fr)]">
+          <div className="space-y-3">
+            {bundles.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#2a2a3a] p-4 text-sm text-slate-500">当前版本没有 source revision 记录。</div>
+            ) : (
+              bundles.map((bundle) => {
+                const revision = latestRevision(bundle.revisions)
+                return (
+                  <div key={bundle.source.id} className="rounded-lg border border-[#242436] bg-[#101018] p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          {bundle.source.type === "git" ? <GitBranch className="size-4 text-cyan-300" /> : <HardDrive className="size-4 text-amber-300" />}
+                          <span className="truncate text-sm font-medium text-slate-100">{bundle.source.name}</span>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                          <Link2 className="size-3.5 shrink-0" />
+                          <span className="break-all font-mono">{bundle.source.repository_url}</span>
+                        </div>
+                      </div>
+                      <Badge className={bundle.source.type === "git" ? "bg-cyan-500/10 text-cyan-300" : "bg-amber-500/10 text-amber-300"}>
+                        {bundle.source.type}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
+                      <FieldPill label="path" value={bundle.source.package_path || "."} />
+                      <FieldPill label="sync" value={bundle.source.sync_mode} />
+                      <FieldPill label="ref" value={bundle.source.default_ref || "-"} />
+                      <FieldPill label="status" value={bundle.source.status} />
+                    </div>
+                    {revision && (
+                      <div className="mt-3 rounded-md border border-[#1d1d2b] bg-[#0b0b12] p-2 text-xs text-slate-500">
+                        <div className="mb-1 flex items-center gap-2 text-slate-300">
+                          <Server className="size-3.5" />
+                          revision {formatDateTime(revision.created_at)}
+                        </div>
+                        <div className="grid gap-1 md:grid-cols-2">
+                          <span className="truncate font-mono">pkg {shortText(revision.package_hash || revision.tree_hash)}</span>
+                          <span className="truncate font-mono">{revision.commit_sha ? `commit ${shortText(revision.commit_sha)}` : `snapshot ${shortText(revision.local_snapshot_id)}`}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div className="rounded-lg border border-[#242436] bg-[#101018]">
+            <div className="flex items-center gap-2 border-b border-[#242436] px-3 py-2 text-sm font-medium text-slate-200">
+              <Files className="size-4 text-slate-300" />
+              Active package files
+            </div>
+            {files.length === 0 ? (
+              <div className="p-4 text-sm text-slate-500">当前 active 版本没有文件快照。</div>
+            ) : (
+              <div className="max-h-[280px] overflow-y-auto p-2">
+                {files.slice(0, 12).map((file) => (
+                  <div key={file.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-xs hover:bg-[#151522]">
+                    <div className="min-w-0">
+                      <div className="truncate font-mono text-slate-300">{file.path}</div>
+                      <div className="mt-1 text-slate-600">{file.kind} · {formatBytes(file.size_bytes)}</div>
+                    </div>
+                    {file.indexable && <Badge className="bg-emerald-500/10 text-emerald-300">indexable</Badge>}
+                  </div>
+                ))}
+                {files.length > 12 && <div className="px-2 py-2 text-xs text-slate-600">还有 {files.length - 12} 个文件未显示</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function FieldPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-[#1d1d2b] bg-[#0b0b12] px-2 py-1.5">
+      <span className="mr-2 text-slate-600">{label}</span>
+      <span className="break-all text-slate-300">{value}</span>
+    </div>
+  )
+}
+
+function SkillSourceForm({
+  defaultName,
+  onDone,
+  onCancel,
+}: {
+  defaultName: string
+  onDone: (source: SkillSource) => Promise<void>
+  onCancel: () => void
+}) {
+  const [type, setType] = useState<"local" | "git">("local")
+  const [name, setName] = useState(defaultName)
+  const [repositoryURL, setRepositoryURL] = useState("file:///Users/wellxie/.agents/skills")
+  const [packagePath, setPackagePath] = useState(defaultName)
+  const [defaultRef, setDefaultRef] = useState("main")
+  const [visibility, setVisibility] = useState<"private" | "shared" | "public">("private")
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const switchType = (nextType: "local" | "git") => {
+    setType(nextType)
+    setRepositoryURL(nextType === "local" ? "file:///Users/wellxie/.agents/skills" : "git@github.com:org/skills.git")
+  }
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!repositoryURL.trim()) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const payload: CreateSkillSourceRequest = {
+        name: name.trim() || undefined,
+        type,
+        repository_url: repositoryURL.trim(),
+        package_path: packagePath.trim(),
+        visibility,
+      }
+      if (type === "git") {
+        payload.default_ref = defaultRef.trim() || "main"
+      }
+      const source = await api.createSkillSource(payload)
+      await onDone(source)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-[#242436] bg-[#0b0b12] p-1">
+        <Button type="button" variant={type === "local" ? "default" : "ghost"} onClick={() => switchType("local")} className={type === "local" ? "bg-amber-600 text-white hover:bg-amber-500" : "text-slate-400 hover:text-slate-100"}>
+          <HardDrive className="size-4" />
+          Local
+        </Button>
+        <Button type="button" variant={type === "git" ? "default" : "ghost"} onClick={() => switchType("git")} className={type === "git" ? "bg-cyan-600 text-white hover:bg-cyan-500" : "text-slate-400 hover:text-slate-100"}>
+          <GitBranch className="size-4" />
+          Git
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="source-name">Name</Label>
+        <Input id="source-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="domain-web" className="border-[#27273a] bg-[#0b0b12]" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="source-repo">Repository URL</Label>
+        <Input
+          id="source-repo"
+          value={repositoryURL}
+          onChange={(event) => setRepositoryURL(event.target.value)}
+          required
+          className="border-[#27273a] bg-[#0b0b12] font-mono text-sm"
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="source-path">Package path</Label>
+          <Input id="source-path" value={packagePath} onChange={(event) => setPackagePath(event.target.value)} placeholder="domain-web" className="border-[#27273a] bg-[#0b0b12]" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="source-ref">Default ref</Label>
+          <Input
+            id="source-ref"
+            value={defaultRef}
+            onChange={(event) => setDefaultRef(event.target.value)}
+            disabled={type === "local"}
+            className="border-[#27273a] bg-[#0b0b12] disabled:text-slate-600"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="source-visibility">Visibility</Label>
+        <select
+          id="source-visibility"
+          value={visibility}
+          onChange={(event) => setVisibility(event.target.value as "private" | "shared" | "public")}
+          className="h-10 w-full rounded-md border border-[#27273a] bg-[#0b0b12] px-3 text-sm text-slate-100 outline-none focus:border-cyan-500"
+        >
+          <option value="private">private</option>
+          <option value="shared">shared</option>
+          <option value="public">public</option>
+        </select>
+      </div>
+
+      <div className="rounded-lg border border-[#242436] bg-[#0b0b12] p-3 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-slate-300">
+          <Package className="size-4" />
+          {type === "git" ? "server_pull" : "client_push"}
+        </div>
+        <div className="mt-1 text-xs leading-5">
+          {type === "git" ? "Git 来源会先登记仓库信息，后续由服务端拉取同步。" : "Local 来源只登记本地目录，后续由客户端推送文件快照。"}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button type="submit" disabled={submitting} className="flex-1 bg-cyan-600 text-white hover:bg-cyan-500">
+          {submitting ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+          注册来源
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="border-[#2a2a3a] bg-[#12121a]">
+          取消
+        </Button>
+      </div>
+    </form>
   )
 }
 
@@ -658,25 +984,50 @@ function SignalRow({ signal }: { signal: SkillSignal }) {
   )
 }
 
-function buildSkillItems(versions: SkillVersion[], logs: SkillLog[]): SkillItem[] {
+async function loadSourceBundles(sources: SkillSource[]): Promise<SourceBundle[]> {
+  return Promise.all(
+    sources.map(async (source) => {
+      try {
+        const revisions = await api.listSkillSourceRevisions(source.id, { limit: 20 })
+        return { source, revisions: sortRevisions(revisions ?? []) }
+      } catch {
+        return { source, revisions: [] }
+      }
+    })
+  )
+}
+
+function buildSkillItems(versions: SkillVersion[], logs: SkillLog[], bundles: SourceBundle[]): SkillItem[] {
   const versionsBySkill = new Map<string, SkillVersion[]>()
   const logsBySkill = new Map<string, SkillLog[]>()
+  const versionByID = new Map<string, SkillVersion>()
+  const sourcesBySkill = new Map<string, SourceBundle[]>()
 
   for (const version of versions) {
     const list = versionsBySkill.get(version.skill_name) ?? []
     list.push(version)
     versionsBySkill.set(version.skill_name, list)
+    versionByID.set(version.id, version)
   }
   for (const log of logs) {
     const list = logsBySkill.get(log.skill_name) ?? []
     list.push(log)
     logsBySkill.set(log.skill_name, list)
   }
+  for (const bundle of bundles) {
+    const names = skillNamesForSource(bundle, versionByID)
+    for (const name of names) {
+      const list = sourcesBySkill.get(name) ?? []
+      list.push(bundle)
+      sourcesBySkill.set(name, list)
+    }
+  }
 
-  const names = new Set([...versionsBySkill.keys(), ...logsBySkill.keys()])
+  const names = new Set([...versionsBySkill.keys(), ...logsBySkill.keys(), ...sourcesBySkill.keys()])
   return [...names].sort().map((name) => {
     const skillVersions = sortVersions(versionsBySkill.get(name) ?? [])
     const skillLogs = logsBySkill.get(name) ?? []
+    const skillSources = sourcesBySkill.get(name) ?? []
     const active = skillVersions.find((version) => version.is_active) ?? null
     const success = skillLogs.filter((log) => log.outcome === "success").length
     const failure = skillLogs.filter((log) => log.outcome === "failure").length
@@ -689,6 +1040,8 @@ function buildSkillItems(versions: SkillVersion[], logs: SkillLog[]): SkillItem[
       description: descriptionFromContent(active?.content ?? skillVersions[0]?.content ?? ""),
       activeVersion: active?.version ?? null,
       activePublishedAt: active?.published_at ?? null,
+      sourceCount: skillSources.length,
+      repositories: uniqueStrings(skillSources.map((bundle) => bundle.source.repository_url)),
       versionCount: skillVersions.length,
       total: skillLogs.length,
       success,
@@ -700,11 +1053,51 @@ function buildSkillItems(versions: SkillVersion[], logs: SkillLog[]): SkillItem[
   })
 }
 
+function sourceBundlesForSkill(skillName: string, versions: SkillVersion[], bundles: SourceBundle[]) {
+  const versionByID = new Map(versions.map((version) => [version.id, version]))
+  return bundles.filter((bundle) => skillNamesForSource(bundle, versionByID).has(skillName))
+}
+
+function skillNamesForSource(bundle: SourceBundle, versionByID: Map<string, SkillVersion>) {
+  const names = new Set<string>()
+  for (const revision of bundle.revisions) {
+    const skillName = revision.skill_version_id ? versionByID.get(revision.skill_version_id)?.skill_name : ""
+    if (skillName) names.add(skillName)
+  }
+  if (names.size === 0) {
+    const fallback = sourceFallbackSkillName(bundle.source)
+    if (fallback) names.add(fallback)
+  }
+  return names
+}
+
+function sourceFallbackSkillName(source: SkillSource) {
+  return source.name || pathBase(source.package_path) || pathBase(source.repository_url.replace(/\.git$/, "")) || source.id
+}
+
+function pathBase(value: string) {
+  const cleaned = value.trim().replace(/\/+$/, "")
+  if (!cleaned) return ""
+  return cleaned.split("/").filter(Boolean).at(-1) ?? ""
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))]
+}
+
 function sortVersions(versions: SkillVersion[]) {
   return [...versions].sort((a, b) => {
     if (a.is_active !== b.is_active) return a.is_active ? -1 : 1
     return Date.parse(b.published_at) - Date.parse(a.published_at)
   })
+}
+
+function sortRevisions(revisions: SkillSourceRevision[]) {
+  return [...revisions].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+}
+
+function latestRevision(revisions: SkillSourceRevision[]) {
+  return sortRevisions(revisions)[0] ?? null
 }
 
 function outcomeBadge(outcome: string) {
@@ -788,6 +1181,18 @@ function formatDateTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "-"
   return date.toLocaleString()
+}
+
+function shortText(value?: string | null) {
+  if (!value) return "-"
+  return value.length > 12 ? value.slice(0, 12) : value
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0 B"
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${(value / 1024 / 1024).toFixed(1)} MB`
 }
 
 function errorMessage(err: unknown) {

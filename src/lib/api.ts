@@ -166,6 +166,21 @@ export const api = {
     const qs = params ? "?" + buildParams(params) : ""
     return request<import("./types").SkillVersion[]>(`/skills/versions${qs}`)
   },
+  listSkillSources: (params?: { type?: string; status?: string; limit?: number; offset?: number }) => {
+    const qs = params ? "?" + buildParams(params) : ""
+    return request<import("./types").SkillSource[]>(`/skills/sources${qs}`)
+  },
+  createSkillSource: (data: import("./types").CreateSkillSourceRequest) =>
+    request<import("./types").SkillSource>("/skills/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  listSkillSourceRevisions: (id: string, params?: { limit?: number; offset?: number }) => {
+    const qs = params ? "?" + buildParams(params) : ""
+    return request<import("./types").SkillSourceRevision[]>(`/skills/sources/${id}/revisions${qs}`)
+  },
+  listSkillVersionFiles: (id: string) =>
+    request<import("./types").SkillVersionFile[]>(`/skills/versions/${id}/files`),
   createSkillVersion: (data: import("./types").CreateSkillVersionRequest) =>
     request<import("./types").SkillVersion>("/skills/versions", {
       method: "POST",
