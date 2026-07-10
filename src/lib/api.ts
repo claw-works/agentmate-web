@@ -1,5 +1,6 @@
-// 前端由 Go 服务同源托管（见 infra/agentmate），API 请求走相对路径。
-const BASE_URL = ""
+// 前端由 Go 服务同源托管（见 infra/agentmate），REST API 统一挂在 /api 前缀下，
+// 与前端页面路径（/todos, /reports/:id 等）区分，避免同源部署时路由冲突。
+const BASE_URL = "/api"
 
 function getToken() {
   if (typeof window === "undefined") return null

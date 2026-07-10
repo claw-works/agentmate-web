@@ -28,7 +28,7 @@ export default function LoginPage() {
       })
       return () => { cancelled = true }
     }
-    void fetch('http://localhost:26001/auth/me', {
+    void fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
