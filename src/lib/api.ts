@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:26001"
+// 前端由 Go 服务同源托管（见 infra/agentmate），API 请求走相对路径。
+const BASE_URL = ""
 
 function getToken() {
   if (typeof window === "undefined") return null
