@@ -13,7 +13,7 @@ interface Translations {
   bookmarks: { title: string; subtitle: string; newBookmark: string; unread: string; read: string; openInBrowser: string }
   expenses: { title: string; subtitle: string; newExpense: string; totalExpense: string; amount: string; description: string }
   skills: { title: string; subtitle: string; totalRuns: string; successRate: string; failureRate: string; correctionRate: string; signals: string; versions: string; logs: string; activeVersion: string }
-  login: { title: string; email: string; password: string; signIn: string; signingIn: string; checking: string }
+  login: { title: string; email: string; password: string; signIn: string; signingIn: string; checking: string; noAccount: string; haveAccount: string; register: string; registering: string; confirmPassword: string; passwordMismatch: string }
 }
 
 const translations: Record<Lang, Translations> = {
@@ -27,7 +27,7 @@ const translations: Record<Lang, Translations> = {
     bookmarks: { title: '书签', subtitle: '收藏的链接和文章', newBookmark: '添加书签', unread: '未读', read: '已读', openInBrowser: '在浏览器中打开' },
     expenses: { title: '记账', subtitle: '追踪你的支出', newExpense: '记一笔', totalExpense: '总支出', amount: '金额', description: '描述' },
     skills: { title: '技能注册', subtitle: '管理 Agent 技能', totalRuns: '总运行', successRate: '成功率', failureRate: '失败率', correctionRate: '纠正率', signals: '信号', versions: '版本', logs: '日志', activeVersion: '当前版本' },
-    login: { title: '登录', email: '邮箱', password: '密码', signIn: '登录', signingIn: '登录中...', checking: '正在检查登录状态...' },
+    login: { title: '登录', email: '邮箱', password: '密码', signIn: '登录', signingIn: '登录中...', checking: '正在检查登录状态...', noAccount: '还没有账号？', haveAccount: '已有账号？', register: '注册', registering: '注册中...', confirmPassword: '确认密码', passwordMismatch: '两次输入的密码不一致' },
   },
   en: {
     nav: { dashboard: 'Dashboard', todos: 'Todos', notes: 'Notes', reports: 'Reports', bookmarks: 'Bookmarks', expenses: 'Expenses', skills: 'Skills', apikeys: 'API Keys', logout: 'Logout' },
@@ -39,7 +39,7 @@ const translations: Record<Lang, Translations> = {
     bookmarks: { title: 'Bookmarks', subtitle: 'Saved links and articles', newBookmark: 'Add Bookmark', unread: 'Unread', read: 'Read', openInBrowser: 'Open in browser' },
     expenses: { title: 'Expenses', subtitle: 'Track your spending', newExpense: 'New Expense', totalExpense: 'Total', amount: 'Amount', description: 'Description' },
     skills: { title: 'Skill Registry', subtitle: 'Manage agent skills', totalRuns: 'Total Runs', successRate: 'Success Rate', failureRate: 'Failure Rate', correctionRate: 'Correction Rate', signals: 'Signals', versions: 'Versions', logs: 'Logs', activeVersion: 'Active Version' },
-    login: { title: 'Sign In', email: 'Email', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...', checking: 'Checking login status...' },
+    login: { title: 'Sign In', email: 'Email', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...', checking: 'Checking login status...', noAccount: "Don't have an account?", haveAccount: 'Already have an account?', register: 'Register', registering: 'Registering...', confirmPassword: 'Confirm Password', passwordMismatch: 'Passwords do not match' },
   },
 }
 

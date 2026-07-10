@@ -10,12 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<"login" | "register">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
-  const { login } = useAuth()
+  const { login, register } = useAuth()
   const { t } = useI18n()
   const router = useRouter()
 
@@ -49,15 +51,30 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    if (mode === "register" && password !== confirmPassword) {
+      setError(t.login.passwordMismatch)
+      return
+    }
     setLoading(true)
     try {
-      await login(email, password)
+      if (mode === "register") {
+        await register(email, password)
+      } else {
+        await login(email, password)
+      }
       router.push("/dashboard")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
+      setError(err instanceof Error ? err.message : "Request failed")
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleMode = () => {
+    setMode((m) => (m === "login" ? "register" : "login"))
+    setError("")
+    setPassword("")
+    setConfirmPassword("")
   }
 
   if (checking) {
@@ -96,10 +113,34 @@ export default function LoginPage() {
                 required
               />
             </div>
+            {mode === "register" && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">{t.login.confirmPassword}</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? t.login.signingIn : t.login.signIn}
+              {loading
+                ? (mode === "register" ? t.login.registering : t.login.signingIn)
+                : (mode === "register" ? t.login.register : t.login.signIn)}
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              {mode === "register" ? t.login.haveAccount : t.login.noAccount}{" "}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                {mode === "register" ? t.login.signIn : t.login.register}
+              </button>
+            </p>
           </form>
         </CardContent>
       </Card>
