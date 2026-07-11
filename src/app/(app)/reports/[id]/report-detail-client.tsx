@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import { marked } from "marked"
 import { Markdown } from "@/components/markdown"
 import { api } from "@/lib/api"
@@ -54,8 +54,16 @@ function getPrimaryTag(tags: string[]): ReportTag {
   return "other"
 }
 
+function getReportId(pathname: string, fallback: string) {
+  const parts = pathname.split("/").filter(Boolean)
+  const reportsIndex = parts.indexOf("reports")
+  return reportsIndex >= 0 ? parts[reportsIndex + 1] ?? fallback : fallback
+}
+
 export default function ReportDetailClient() {
-  const { id } = useParams<{ id: string }>()
+  const params = useParams<{ id: string }>()
+  const pathname = usePathname()
+  const id = getReportId(pathname, params.id)
   const router = useRouter()
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(true)

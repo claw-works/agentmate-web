@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import { api } from "@/lib/api"
 import { Bookmark } from "@/lib/types"
 import { Markdown } from "@/components/markdown"
@@ -25,8 +25,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Download, Copy, ChevronDown, ExternalLink } from "lucide-react"
 
+function getBookmarkId(pathname: string, fallback: string) {
+  const parts = pathname.split("/").filter(Boolean)
+  const bookmarksIndex = parts.indexOf("bookmarks")
+  return bookmarksIndex >= 0 ? parts[bookmarksIndex + 1] ?? fallback : fallback
+}
+
 export default function BookmarkDetailClient() {
-  const { id } = useParams<{ id: string }>()
+  const params = useParams<{ id: string }>()
+  const pathname = usePathname()
+  const id = getBookmarkId(pathname, params.id)
   const router = useRouter()
   const [bookmark, setBookmark] = useState<Bookmark | null>(null)
   const [loading, setLoading] = useState(true)
