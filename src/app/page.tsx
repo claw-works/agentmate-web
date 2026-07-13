@@ -7,6 +7,17 @@ import { Markdown } from "@/components/markdown"
 import { api } from "@/lib/api"
 import { PublicReport } from "@/lib/types"
 
+const reportSources = [
+  { key: "all", label: "全部", source: undefined, description: "所有公开报告" },
+  { key: "github", label: "GH", source: "github-trending-daily", description: "GitHub 热门项目" },
+  { key: "huggingface", label: "HF", source: "huggingface-daily", description: "HuggingFace 动态" },
+  { key: "papers", label: "论文", source: "arxiv-ai-daily", description: "AI 论文精选" },
+  { key: "analysis", label: "分析", source: "deep-analysis-2026-05-19", description: "深度分析" },
+  { key: "other", label: "其他", source: "adhoc", description: "临时报告" },
+] as const
+
+type ReportSourceKey = (typeof reportSources)[number]["key"]
+
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("zh-CN", {
     year: "numeric",
@@ -40,12 +51,15 @@ function HtmlPreview({ report }: { report: PublicReport }) {
 export default function HomePage() {
   const [reports, setReports] = useState<PublicReport[]>([])
   const [selectedId, setSelectedId] = useState("")
+  const [activeSource, setActiveSource] = useState<ReportSourceKey>("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  const sourceConfig = reportSources.find((source) => source.key === activeSource) ?? reportSources[0]
+
   useEffect(() => {
     let cancelled = false
-    void api.listPublicReports({ limit: 12 }).then((data) => {
+    void api.listPublicReports({ limit: 12, source: sourceConfig.source }).then((data) => {
       if (cancelled) return
       const items = data.items ?? []
       setReports(items)
@@ -58,12 +72,17 @@ export default function HomePage() {
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [])
+  }, [sourceConfig.source])
 
   const selectedReport = useMemo(
     () => reports.find((report) => report.id === selectedId) ?? reports[0] ?? null,
     [reports, selectedId]
   )
+
+  const handleSourceChange = (source: ReportSourceKey) => {
+    setActiveSource(source)
+    setLoading(true)
+  }
 
   return (
     <main className="min-h-screen bg-[#08090d] text-slate-100">
@@ -93,8 +112,29 @@ export default function HomePage() {
               <p className="text-xs font-medium uppercase tracking-[0.24em] text-emerald-300/80">Reports</p>
               <h1 className="text-3xl font-semibold text-white">公开报告</h1>
               <p className="text-sm leading-6 text-slate-500">
-                最近发布的报告会在这里公开展示。
+                最近发布的报告会在这里公开展示，按来源快速切换内容。
               </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {reportSources.map((source) => {
+                const active = activeSource === source.key
+                return (
+                  <button
+                    key={source.key}
+                    type="button"
+                    onClick={() => handleSourceChange(source.key)}
+                    className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                      active
+                        ? "border-emerald-400/60 bg-emerald-400/10 text-white"
+                        : "border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                    }`}
+                  >
+                    <span className="block text-sm font-medium">{source.label}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">{source.description}</span>
+                  </button>
+                )
+              })}
             </div>
 
             {loading && (
@@ -113,7 +153,7 @@ export default function HomePage() {
 
             {!loading && !error && reports.length === 0 && (
               <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-400">
-                暂无公开报告。
+                暂无{sourceConfig.label}报告。
               </div>
             )}
 

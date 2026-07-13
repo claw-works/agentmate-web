@@ -35,7 +35,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-[#0a0a12]">
       {/* Sidebar */}
       <aside className="w-[220px] shrink-0 h-full overflow-y-auto border-r border-[#1e1e2e] bg-[#0d0d16] flex flex-col">
-        <div className="px-5 py-5 font-bold text-lg text-white">AgentMate</div>
+        <Link href="/" className="px-5 py-5 font-bold text-lg text-white transition-colors hover:text-emerald-300">
+          AgentMate
+        </Link>
         <nav className="flex-1 px-3 space-y-1">
           {navKeys.map((item) => {
             const active = pathname.startsWith(item.href)
