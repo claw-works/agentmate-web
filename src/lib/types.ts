@@ -46,6 +46,17 @@ export interface Report {
   updated_at: string
 }
 
+export interface PublicReport {
+  id: string
+  title: string
+  content?: string
+  format: "md" | "html"
+  tags: string[]
+  source: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Bookmark {
   id: string
   user_id: string

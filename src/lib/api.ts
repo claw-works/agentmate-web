@@ -128,6 +128,16 @@ export const api = {
   deleteReport: (id: string) => request<void>(`/reports/${id}`, { method: "DELETE" }),
   listReportSources: () => request<{ source: string; count: number }[]>("/reports/sources"),
   searchReports: (q: string) => request<import("./types").Report[]>(`/reports/search?q=${encodeURIComponent(q)}`),
+  listPublicReports: (params?: { tag?: string; source?: string; q?: string; limit?: number; offset?: number }) => {
+    const qs = params ? "?" + buildParams(params) : ""
+    return request<{ items: import("./types").PublicReport[]; total: number; limit: number; offset: number }>(
+      `/public/reports${qs}`,
+      {},
+      { unwrapItems: false }
+    )
+  },
+  getPublicReport: (id: string) =>
+    request<import("./types").PublicReport>(`/public/reports/${id}`),
 
   // Bookmarks
   listBookmarks: (params?: { is_read?: boolean; tags?: string[]; source?: string; limit?: number; offset?: number }) => {
