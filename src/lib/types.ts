@@ -57,6 +57,11 @@ export interface PublicReport {
   updated_at: string
 }
 
+export interface PublicReportSource {
+  source: string
+  count: number
+}
+
 export interface Bookmark {
   id: string
   user_id: string

@@ -136,6 +136,8 @@ export const api = {
       { unwrapItems: false }
     )
   },
+  listPublicReportSources: () =>
+    request<import("./types").PublicReportSource[]>("/public/reports/sources"),
   getPublicReport: (id: string) =>
     request<import("./types").PublicReport>(`/public/reports/${id}`),
 
