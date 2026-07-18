@@ -128,6 +128,9 @@ export interface SkillVersion {
   skill_name: string
   version: string
   content_hash: string
+  package_hash?: string
+  source_id?: string
+  source_revision_id?: string
   content: string
   agent_id: string
   change_summary: string
@@ -141,6 +144,21 @@ export type SkillSyncMode = "server_pull" | "client_push"
 export type SkillVisibility = "private" | "shared" | "public"
 export type SkillSourceStatus = "active" | "disabled" | "error"
 
+export interface GitSourceSyncState {
+  status: "succeeded" | "failed"
+  provider?: "github" | "gitlab"
+  ref?: string
+  commit_sha?: string
+  package_hash?: string
+  error?: string
+  synced_at: string
+}
+
+export interface SkillSourceMetadata {
+  git_sync?: GitSourceSyncState
+  [key: string]: unknown
+}
+
 export interface SkillSource {
   id: string
   user_id?: string
@@ -152,9 +170,26 @@ export interface SkillSource {
   sync_mode: SkillSyncMode
   visibility: SkillVisibility
   status: SkillSourceStatus
-  metadata?: unknown
+  metadata?: SkillSourceMetadata
   created_at: string
   updated_at: string
+}
+
+export interface SyncGitSourceRequest {
+  ref?: string
+  activate?: boolean
+  index?: boolean
+}
+
+export interface SyncGitSourceResponse {
+  source: SkillSource
+  provider: "github" | "gitlab"
+  ref: string
+  commit_sha: string
+  revision: SkillSourceRevision
+  version: SkillVersion
+  files: SkillVersionFile[]
+  index?: IndexSkillsResponse
 }
 
 export interface SkillSourceRevision {

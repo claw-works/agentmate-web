@@ -194,6 +194,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  syncSkillSource: (id: string, data: import("./types").SyncGitSourceRequest = {}) =>
+    request<import("./types").SyncGitSourceResponse>(`/skills/sources/${id}/sync`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   listSkillSourceRevisions: (id: string, params?: { limit?: number; offset?: number }) => {
     const qs = params ? "?" + buildParams(params) : ""
     return request<import("./types").SkillSourceRevision[]>(`/skills/sources/${id}/revisions${qs}`)

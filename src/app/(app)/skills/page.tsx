@@ -36,6 +36,7 @@ import {
   SkillStats,
   SkillVersion,
   SkillVersionFile,
+  SyncGitSourceResponse,
 } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -93,6 +94,7 @@ export default function SkillsPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [indexingTarget, setIndexingTarget] = useState<string | null>(null)
+  const [syncingSourceID, setSyncingSourceID] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sourceSheetOpen, setSourceSheetOpen] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -208,6 +210,22 @@ export default function SkillsPage() {
       setNotice({ tone: "error", text: errorMessage(err) })
     } finally {
       setIndexingTarget(null)
+    }
+  }
+
+  const handleSyncSource = async (source: SkillSource) => {
+    setSyncingSourceID(source.id)
+    setNotice(null)
+    try {
+      const result = await api.syncSkillSource(source.id)
+      await Promise.all([load(), loadDetail(result.version.skill_name)])
+      setNotice(syncNotice(result, source.name))
+    } catch (err) {
+      const message = errorMessage(err)
+      await load()
+      setNotice({ tone: "error", text: `来源「${source.name}」同步失败：${message}` })
+    } finally {
+      setSyncingSourceID(null)
     }
   }
 
@@ -442,7 +460,12 @@ export default function SkillsPage() {
                     <Metric label={t.skills.correctionRate} value={formatPercent(stats?.correction_rate ?? 0)} icon={<RefreshCw className="size-4" />} tone="amber" />
                   </div>
 
-                  <SourcePanel bundles={selectedSourceBundles} files={selectedFiles} />
+                  <SourcePanel
+                    bundles={selectedSourceBundles}
+                    files={selectedFiles}
+                    syncingSourceID={syncingSourceID}
+                    onSync={handleSyncSource}
+                  />
 
                   <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
                     <div className="space-y-3">
@@ -523,7 +546,17 @@ export default function SkillsPage() {
   )
 }
 
-function SourcePanel({ bundles, files }: { bundles: SourceBundle[]; files: SkillVersionFile[] }) {
+function SourcePanel({
+  bundles,
+  files,
+  syncingSourceID,
+  onSync,
+}: {
+  bundles: SourceBundle[]
+  files: SkillVersionFile[]
+  syncingSourceID: string | null
+  onSync: (source: SkillSource) => Promise<void>
+}) {
   return (
     <section className="rounded-lg border border-[#1e1e2e] bg-[#0b0b12]">
       <div className="flex flex-col gap-2 border-b border-[#1e1e2e] p-3 md:flex-row md:items-center md:justify-between">
@@ -547,6 +580,8 @@ function SourcePanel({ bundles, files }: { bundles: SourceBundle[]; files: Skill
             ) : (
               bundles.map((bundle) => {
                 const revision = latestRevision(bundle.revisions)
+                const syncState = bundle.source.metadata?.git_sync
+                const isSyncing = syncingSourceID === bundle.source.id
                 return (
                   <div key={bundle.source.id} className="rounded-lg border border-[#242436] bg-[#101018] p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -560,16 +595,52 @@ function SourcePanel({ bundles, files }: { bundles: SourceBundle[]; files: Skill
                           <span className="break-all font-mono">{bundle.source.repository_url}</span>
                         </div>
                       </div>
-                      <Badge className={bundle.source.type === "git" ? "bg-cyan-500/10 text-cyan-300" : "bg-amber-500/10 text-amber-300"}>
-                        {bundle.source.type}
-                      </Badge>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Badge className={bundle.source.type === "git" ? "bg-cyan-500/10 text-cyan-300" : "bg-amber-500/10 text-amber-300"}>
+                          {bundle.source.type}
+                        </Badge>
+                        <Badge className={sourceStatusClassName(bundle.source.status)}>{bundle.source.status}</Badge>
+                        {bundle.source.type === "git" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={bundle.source.status === "disabled" || syncingSourceID !== null}
+                            onClick={() => void onSync(bundle.source)}
+                            className="h-7 border-cyan-500/30 bg-cyan-500/5 px-2.5 text-xs text-cyan-200 hover:bg-cyan-500/15"
+                          >
+                            {isSyncing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                            {isSyncing ? "同步中" : "同步"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
                       <FieldPill label="path" value={bundle.source.package_path || "."} />
                       <FieldPill label="sync" value={bundle.source.sync_mode} />
-                      <FieldPill label="ref" value={bundle.source.default_ref || "-"} />
+                      <FieldPill label="ref" value={bundle.source.default_ref || "provider default"} />
                       <FieldPill label="status" value={bundle.source.status} />
                     </div>
+                    {syncState && (
+                      <div className={`mt-3 rounded-md border p-2.5 text-xs ${syncState.status === "succeeded" ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-500/25 bg-red-500/5"}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className={`flex items-center gap-1.5 font-medium ${syncState.status === "succeeded" ? "text-emerald-300" : "text-red-300"}`}>
+                            {syncState.status === "succeeded" ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
+                            Git sync {syncState.status}
+                          </div>
+                          <span className="text-slate-600">{formatDateTime(syncState.synced_at)}</span>
+                        </div>
+                        {syncState.error ? (
+                          <p className="mt-2 break-words leading-5 text-red-300/80">{syncState.error}</p>
+                        ) : (
+                          <div className="mt-2 grid gap-1 text-slate-500 md:grid-cols-2">
+                            <span>{syncState.provider || "git"} · {syncState.ref || bundle.source.default_ref || "default"}</span>
+                            <span className="truncate font-mono">commit {shortText(syncState.commit_sha)}</span>
+                            <span className="truncate font-mono md:col-span-2">package {shortText(syncState.package_hash)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {revision && (
                       <div className="mt-3 rounded-md border border-[#1d1d2b] bg-[#0b0b12] p-2 text-xs text-slate-500">
                         <div className="mb-1 flex items-center gap-2 text-slate-300">
@@ -638,14 +709,14 @@ function SkillSourceForm({
   const [name, setName] = useState(defaultName)
   const [repositoryURL, setRepositoryURL] = useState("file:///Users/wellxie/.agents/skills")
   const [packagePath, setPackagePath] = useState(defaultName)
-  const [defaultRef, setDefaultRef] = useState("main")
+  const [defaultRef, setDefaultRef] = useState("")
   const [visibility, setVisibility] = useState<"private" | "shared" | "public">("private")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const switchType = (nextType: "local" | "git") => {
     setType(nextType)
-    setRepositoryURL(nextType === "local" ? "file:///Users/wellxie/.agents/skills" : "git@github.com:org/skills.git")
+    setRepositoryURL(nextType === "local" ? "file:///Users/wellxie/.agents/skills" : "https://github.com/org/skills.git")
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -661,8 +732,8 @@ function SkillSourceForm({
         package_path: packagePath.trim(),
         visibility,
       }
-      if (type === "git") {
-        payload.default_ref = defaultRef.trim() || "main"
+      if (type === "git" && defaultRef.trim()) {
+        payload.default_ref = defaultRef.trim()
       }
       const source = await api.createSkillSource(payload)
       await onDone(source)
@@ -704,6 +775,7 @@ function SkillSourceForm({
           id="source-repo"
           value={repositoryURL}
           onChange={(event) => setRepositoryURL(event.target.value)}
+          placeholder={type === "git" ? "https://github.com/org/skills.git" : "file:///Users/me/.agents/skills"}
           required
           className="border-[#27273a] bg-[#0b0b12] font-mono text-sm"
         />
@@ -720,6 +792,7 @@ function SkillSourceForm({
             id="source-ref"
             value={defaultRef}
             onChange={(event) => setDefaultRef(event.target.value)}
+            placeholder={type === "git" ? "留空使用仓库默认分支" : "仅 Git 来源可用"}
             disabled={type === "local"}
             className="border-[#27273a] bg-[#0b0b12] disabled:text-slate-600"
           />
@@ -746,7 +819,9 @@ function SkillSourceForm({
           {type === "git" ? "server_pull" : "client_push"}
         </div>
         <div className="mt-1 text-xs leading-5">
-          {type === "git" ? "Git 来源会先登记仓库信息，后续由服务端拉取同步。" : "Local 来源只登记本地目录，后续由客户端推送文件快照。"}
+          {type === "git"
+            ? "仅支持公共 GitHub/GitLab HTTPS 仓库。注册后可在来源卡片同步 package_path，默认激活并索引新版本。"
+            : "Local 来源只登记本地目录，后续由客户端推送完整文件快照。"}
         </div>
       </div>
 
@@ -1108,6 +1183,24 @@ function outcomeBadge(outcome: string) {
     user_corrected: "bg-cyan-500/10 text-cyan-300",
   }
   return <Badge className={classes[outcome] ?? "bg-slate-500/10 text-slate-300"}>{outcome}</Badge>
+}
+
+function sourceStatusClassName(status: SkillSource["status"]) {
+  const classes = {
+    active: "bg-emerald-500/10 text-emerald-300",
+    disabled: "bg-slate-500/10 text-slate-400",
+    error: "bg-red-500/10 text-red-300",
+  }
+  return classes[status]
+}
+
+function syncNotice(result: SyncGitSourceResponse, sourceName: string): Notice {
+  const indexErrors = result.index?.errors ?? []
+  const summary = `来源「${sourceName}」已同步 ${result.provider}/${result.ref} @ ${shortText(result.commit_sha)}，捕获 ${result.files.length} 个文件。`
+  if (indexErrors.length > 0) {
+    return { tone: "warning", text: `${summary} 索引失败：${indexErrors.map((item) => item.error).join("; ")}` }
+  }
+  return { tone: "success", text: summary }
 }
 
 function noticeClassName(tone: Notice["tone"]) {
