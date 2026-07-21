@@ -279,3 +279,87 @@ export interface SearchSkillsResponse {
   items: SkillSearchItem[]
   total: number
 }
+
+
+// Phase 3 progressive skill delivery DTOs.
+export interface SkillCatalogItemDTO {
+  skill_name: string
+  description: string
+  version: string
+  version_id: string
+  package_hash: string
+  source_id?: string
+  triggers: string[]
+  capabilities: string[]
+  constraints: string[]
+  dependencies: string[]
+  resource_count: number
+  resource_kinds: string[]
+  compiler_name: string
+  compiler_version: string
+  artifact_available: boolean
+  compiled_at: string
+  published_at: string
+}
+
+export interface SkillCatalogResponseDTO {
+  items: SkillCatalogItemDTO[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface CompileSkillsRequestDTO {
+  version_id?: string
+}
+
+export interface CompileSkillErrorDTO {
+  skill_name: string
+  error: string
+}
+
+export interface CompileSkillsResponseDTO {
+  items: SkillCatalogItemDTO[]
+  errors: CompileSkillErrorDTO[]
+}
+
+export interface SkillInstructionsDTO {
+  version_id: string
+  skill_name: string
+  version: string
+  instructions: string
+  content_hash: string
+  published_at: string
+}
+
+export interface SkillResourceManifestItemDTO {
+  file_id: string
+  path: string
+  kind: string
+  sha256: string
+  size_bytes: number
+  mime_type: string
+  indexable: boolean
+  text_available: boolean
+}
+
+export interface SkillResourcesResponseDTO {
+  version_id: string
+  skill_name: string
+  version: string
+  items: SkillResourceManifestItemDTO[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface SkillResourceDTO {
+  version_id: string
+  file_id: string
+  path: string
+  kind: string
+  sha256: string
+  size_bytes: number
+  mime_type: string
+  content: string
+}

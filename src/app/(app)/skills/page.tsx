@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
   AlertTriangle,
@@ -50,6 +50,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
+import { SkillCatalogPage } from "./skill-catalog-page"
 
 interface SkillItem {
   name: string
@@ -80,6 +81,25 @@ type Notice = {
 const ALL_INDEX_TARGET = "__all__"
 
 export default function SkillsPage() {
+  return (
+    <SkillCatalogPage
+      renderManagement={(onCatalogMutation, selectedSkillName) => (
+        <SkillManagementConsole
+          onCatalogMutation={onCatalogMutation}
+          initialSkillName={selectedSkillName}
+        />
+      )}
+    />
+  )
+}
+
+function SkillManagementConsole({
+  onCatalogMutation,
+  initialSkillName,
+}: {
+  onCatalogMutation: () => Promise<void>
+  initialSkillName: string | null
+}) {
   const { t } = useI18n()
   const [skills, setSkills] = useState<SkillItem[]>([])
   const [sourceBundles, setSourceBundles] = useState<SourceBundle[]>([])
@@ -98,6 +118,7 @@ export default function SkillsPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sourceSheetOpen, setSourceSheetOpen] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const detailRequestID = useRef(0)
 
   const selectedSkill = useMemo(
     () => skills.find((skill) => skill.name === selected) ?? null,
@@ -132,6 +153,7 @@ export default function SkillsPage() {
   }, [])
 
   const loadDetail = useCallback(async (name: string) => {
+    const requestID = ++detailRequestID.current
     setSelected(name)
     setDetailLoading(true)
     try {
@@ -150,18 +172,20 @@ export default function SkillsPage() {
           }
         })
       )
+      if (requestID !== detailRequestID.current) return
       setStats(nextStats)
       setSignals(nextSignals ?? [])
       setVersions(sortedVersions)
       setVersionFiles(Object.fromEntries(filePairs))
     } catch (err) {
+      if (requestID !== detailRequestID.current) return
       setNotice({ tone: "error", text: errorMessage(err) })
       setStats(null)
       setSignals([])
       setVersions([])
       setVersionFiles({})
     } finally {
-      setDetailLoading(false)
+      if (requestID === detailRequestID.current) setDetailLoading(false)
     }
   }, [])
 
@@ -172,12 +196,14 @@ export default function SkillsPage() {
   }, [load])
 
   useEffect(() => {
-    if (!selected && skills.length > 0) {
+    if (selected) return
+    const nextSkillName = initialSkillName || skills[0]?.name
+    if (nextSkillName) {
       queueMicrotask(() => {
-        void loadDetail(skills[0].name)
+        void loadDetail(nextSkillName)
       })
     }
-  }, [loadDetail, selected, skills])
+  }, [initialSkillName, loadDetail, selected, skills])
 
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault()
@@ -206,6 +232,7 @@ export default function SkillsPage() {
     try {
       const result = await api.indexActiveSkills(skillName)
       setNotice(indexNotice(result, skillName))
+      await onCatalogMutation()
     } catch (err) {
       setNotice({ tone: "error", text: errorMessage(err) })
     } finally {
@@ -217,8 +244,9 @@ export default function SkillsPage() {
     setSyncingSourceID(source.id)
     setNotice(null)
     try {
-      const result = await api.syncSkillSource(source.id)
+      const result = await api.syncSkillSource(source.id, { activate: true, index: true })
       await Promise.all([load(), loadDetail(result.version.skill_name)])
+      await onCatalogMutation()
       setNotice(syncNotice(result, source.name))
     } catch (err) {
       const message = errorMessage(err)
@@ -237,6 +265,7 @@ export default function SkillsPage() {
       const result = await api.indexActiveSkills(version.skill_name)
       setNotice(indexNotice(result, version.skill_name))
       await Promise.all([load(), loadDetail(version.skill_name)])
+      await onCatalogMutation()
     } catch (err) {
       setNotice({ tone: "error", text: errorMessage(err) })
     } finally {
@@ -247,8 +276,11 @@ export default function SkillsPage() {
   const handlePublished = async (skillName: string, indexResult?: IndexSkillsResponse) => {
     setSheetOpen(false)
     setNotice(indexResult ? indexNotice(indexResult, skillName) : { tone: "success", text: "技能版本已发布。" })
-    await load()
-    await loadDetail(skillName)
+    await Promise.all([
+      load(),
+      loadDetail(skillName),
+      onCatalogMutation(),
+    ])
   }
 
   const handleSourceCreated = async (source: SkillSource) => {

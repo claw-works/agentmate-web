@@ -226,4 +226,39 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }, { unwrapItems: false }),
+  listSkillCatalog: (
+    params: { query?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").SkillCatalogResponseDTO>(
+      `/skills/catalog${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  compileSkills: (data: import("./types").CompileSkillsRequestDTO = {}) =>
+    request<import("./types").CompileSkillsResponseDTO>("/skills/compile", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, { unwrapItems: false }),
+  getSkillInstructions: (versionID: string) =>
+    request<import("./types").SkillInstructionsDTO>(
+      `/skills/versions/${encodeURIComponent(versionID)}/instructions`
+    ),
+  listSkillResources: (
+    versionID: string,
+    params: { limit?: number; offset?: number } = {}
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").SkillResourcesResponseDTO>(
+      `/skills/versions/${encodeURIComponent(versionID)}/resources${qs}`,
+      {},
+      { unwrapItems: false }
+    )
+  },
+  getSkillResource: (versionID: string, fileID: string) =>
+    request<import("./types").SkillResourceDTO>(
+      `/skills/versions/${encodeURIComponent(versionID)}/resources/${encodeURIComponent(fileID)}`
+    ),
 }
