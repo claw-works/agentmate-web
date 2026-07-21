@@ -14,6 +14,7 @@ import {
   Boxes,
   CheckCircle2,
   ChevronDown,
+  ClipboardCheck,
   Code2,
   FileQuestion,
   FileText,
@@ -37,11 +38,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SkillQualityPanel } from "./skill-quality-panel"
 
 const CATALOG_PAGE_SIZE = 18
 const RESOURCE_PAGE_SIZE = 20
 
-type DetailTab = "overview" | "instructions" | "resources" | "manage"
+type DetailTab = "overview" | "instructions" | "resources" | "quality" | "manage"
 type Notice = { tone: "success" | "warning" | "error"; text: string }
 type AsyncEntry<T> = { data?: T; loading: boolean; error?: string }
 type ResourceListEntry = {
@@ -442,6 +444,7 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
                 <TabsTrigger value="overview" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><Tags />概览</TabsTrigger>
                 <TabsTrigger value="instructions" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><BookOpenText />说明</TabsTrigger>
                 <TabsTrigger value="resources" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><FileText />资源</TabsTrigger>
+                <TabsTrigger value="quality" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><ClipboardCheck />Quality</TabsTrigger>
                 <TabsTrigger value="manage" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><Settings2 />管理</TabsTrigger>
               </TabsList>
 
@@ -460,6 +463,15 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
                   onOpen={(resource) => void loadResourceContent(selectedItem, resource)}
                   onLoadMore={() => void loadResources(selectedItem, true)}
                   onRetry={() => void loadResources(selectedItem)}
+                />
+              </TabsContent>
+              <TabsContent value="quality" className="p-4 md:p-5">
+                <SkillQualityPanel
+                  active={activeTab === "quality"}
+                  versionID={selectedItem.version_id}
+                  skillName={selectedItem.skill_name}
+                  version={selectedItem.version}
+                  packageHash={selectedItem.package_hash}
                 />
               </TabsContent>
               <TabsContent value="manage" className="p-4 md:p-5">

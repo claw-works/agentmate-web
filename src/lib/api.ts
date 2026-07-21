@@ -261,4 +261,34 @@ export const api = {
     request<import("./types").SkillResourceDTO>(
       `/skills/versions/${encodeURIComponent(versionID)}/resources/${encodeURIComponent(fileID)}`
     ),
+  listSkillQualityRuns: (
+    versionID: string,
+    params: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").SkillQualityRunsResponseDTO>(
+      `/skills/versions/${encodeURIComponent(versionID)}/quality-runs${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  createSkillQualityRun: (
+    versionID: string,
+    data: import("./types").CreateSkillQualityRunRequestDTO = {},
+    signal?: AbortSignal
+  ) =>
+    request<import("./types").SkillQualityRunDTO>(
+      `/skills/versions/${encodeURIComponent(versionID)}/quality-runs`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        signal,
+      }
+    ),
+  getSkillQualityRun: (runID: string, signal?: AbortSignal) =>
+    request<import("./types").SkillQualityRunDTO>(
+      `/skills/quality-runs/${encodeURIComponent(runID)}`,
+      { signal }
+    ),
 }

@@ -883,7 +883,6 @@ function SkillVersionForm({
   const [version, setVersion] = useState("0.1.0")
   const [agentID, setAgentID] = useState("agentmate-web")
   const [changeSummary, setChangeSummary] = useState("")
-  const [evalPassRate, setEvalPassRate] = useState("")
   const [activate, setActivate] = useState(true)
   const [indexAfterPublish, setIndexAfterPublish] = useState(true)
   const [content, setContent] = useState(defaultSkillContent(defaultSkillName))
@@ -903,10 +902,6 @@ function SkillVersionForm({
         agent_id: agentID.trim(),
         change_summary: changeSummary.trim(),
         activate,
-      }
-      const parsedPassRate = Number(evalPassRate)
-      if (evalPassRate.trim() && !Number.isNaN(parsedPassRate)) {
-        payload.eval_pass_rate = parsedPassRate > 1 ? parsedPassRate / 100 : parsedPassRate
       }
       const created = await api.createSkillVersion(payload)
       const indexResult = activate && indexAfterPublish ? await api.indexActiveSkills(created.skill_name) : undefined
@@ -950,27 +945,14 @@ function SkillVersionForm({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="skill-agent">Agent ID</Label>
-          <Input
-            id="skill-agent"
-            value={agentID}
-            onChange={(event) => setAgentID(event.target.value)}
-            className="border-[#27273a] bg-[#0b0b12]"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="skill-pass-rate">Eval pass rate</Label>
-          <Input
-            id="skill-pass-rate"
-            inputMode="decimal"
-            value={evalPassRate}
-            onChange={(event) => setEvalPassRate(event.target.value)}
-            placeholder="0.95 或 95"
-            className="border-[#27273a] bg-[#0b0b12]"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="skill-agent">Agent ID</Label>
+        <Input
+          id="skill-agent"
+          value={agentID}
+          onChange={(event) => setAgentID(event.target.value)}
+          className="border-[#27273a] bg-[#0b0b12]"
+        />
       </div>
 
       <div className="space-y-2">
@@ -1053,7 +1035,6 @@ function VersionRow({ version, busy, onActivate }: { version: SkillVersion; busy
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-slate-100">v{version.version}</span>
           {version.is_active && <Badge className="bg-emerald-500/10 text-emerald-300">active</Badge>}
-          {version.eval_pass_rate != null && <Badge className="bg-cyan-500/10 text-cyan-300">{formatPercent(version.eval_pass_rate)} pass</Badge>}
         </div>
         <p className="mt-1 line-clamp-2 text-sm text-slate-500">{version.change_summary || descriptionFromContent(version.content) || "无变更说明"}</p>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">

@@ -363,3 +363,127 @@ export interface SkillResourceDTO {
   mime_type: string
   content: string
 }
+
+// Phase 4 离线确定性质量报告 DTO，与 backend/internal/skills/quality_model.go 一致。
+export interface SkillQualityPackageRefDTO {
+  version_id: string
+  skill_name: string
+  version: string
+  package_hash: string
+}
+
+export type SkillQualitySeverityDTO = "blocker" | "error" | "warning"
+
+export interface SkillQualityCheckDTO {
+  id: string
+  severity: SkillQualitySeverityDTO
+  passed: boolean
+  applicable: boolean
+  evidence: Record<string, unknown>
+}
+
+export interface SkillQualityFileChangeDTO {
+  path: string
+  before_hash?: string
+  after_hash?: string
+}
+
+export interface SkillQualityRoutingDiffDTO {
+  field: string
+  before: string[]
+  after: string[]
+}
+
+export interface SkillQualityComparisonDTO {
+  status: string
+  baseline_version_id?: string
+  package_hash_changed: boolean
+  resource_manifest_changed: boolean
+  files_added: SkillQualityFileChangeDTO[]
+  files_removed: SkillQualityFileChangeDTO[]
+  files_modified: SkillQualityFileChangeDTO[]
+  routing_diffs: SkillQualityRoutingDiffDTO[]
+  lint_regressions: string[]
+  eval_regressions: string[]
+}
+
+export interface SkillQualityOutcomeCountsDTO {
+  success: number
+  failure: number
+  partial: number
+  user_corrected: number
+  other: number
+}
+
+export interface SkillQualitySuggestionDTO {
+  category: string
+  count: number
+  denominator: number
+  rate: number
+  fingerprint: string
+  log_ids: string[]
+}
+
+export interface SkillQualityTelemetryDTO {
+  status: string
+  cutoff: string
+  considered: number
+  triggered: number
+  bypass: number
+  outcome_denominator: number
+  outcomes: SkillQualityOutcomeCountsDTO
+  suggestions: SkillQualitySuggestionDTO[]
+}
+
+export interface SkillQualityReportDTO {
+  schema_version: string
+  engine_version: string
+  checkset_version: string
+  input: SkillQualityPackageRefDTO
+  lint: SkillQualityCheckDTO[]
+  eval: SkillQualityCheckDTO[]
+  comparison: SkillQualityComparisonDTO
+  telemetry: SkillQualityTelemetryDTO
+}
+
+export interface SkillQualityRunDTO {
+  id: string
+  skill_version_id: string
+  baseline_version_id?: string
+  engine_version: string
+  checkset_version: string
+  input_package_hash: string
+  baseline_package_hash?: string
+  telemetry_cutoff: string
+  status: string
+  report: SkillQualityReportDTO
+  failure_message?: string
+  created_at: string
+  completed_at?: string
+}
+
+export interface SkillQualityRunSummaryDTO {
+  id: string
+  skill_version_id: string
+  baseline_version_id?: string
+  engine_version: string
+  checkset_version: string
+  input_package_hash: string
+  baseline_package_hash?: string
+  telemetry_cutoff: string
+  status: string
+  failure_message?: string
+  created_at: string
+  completed_at?: string
+}
+
+export interface SkillQualityRunsResponseDTO {
+  items: SkillQualityRunSummaryDTO[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface CreateSkillQualityRunRequestDTO {
+  baseline_version_id?: string
+}
