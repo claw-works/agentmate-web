@@ -291,4 +291,72 @@ export const api = {
       `/skills/quality-runs/${encodeURIComponent(runID)}`,
       { signal }
     ),
+
+  // Knowledge Registry (K1/K2)
+  listKnowledgeSources: (params?: { type?: string; status?: string; limit?: number; offset?: number }) => {
+    const qs = params ? "?" + buildParams(params) : ""
+    return request<import("./types").KnowledgeSource[]>(`/knowledge/sources${qs}`)
+  },
+  createKnowledgeSource: (data: import("./types").CreateKnowledgeSourceRequest) =>
+    request<import("./types").KnowledgeSource>("/knowledge/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  listKnowledgeSourceRevisions: (id: string, params?: { limit?: number; offset?: number }) => {
+    const qs = params ? "?" + buildParams(params) : ""
+    return request<import("./types").KnowledgeSourceRevision[]>(
+      `/knowledge/sources/${encodeURIComponent(id)}/revisions${qs}`
+    )
+  },
+  syncKnowledgeSource: (id: string, data: import("./types").SyncKnowledgeSourceRequest = {}) =>
+    request<import("./types").SyncKnowledgeSourceResponse>(
+      `/knowledge/sources/${encodeURIComponent(id)}/sync`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+  listKnowledgeCatalog: (
+    params: { query?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").KnowledgeCatalogResponse>(
+      `/knowledge/catalog${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  indexKnowledge: (sourceID?: string) =>
+    request<import("./types").IndexKnowledgeResponse>("/knowledge/index", {
+      method: "POST",
+      body: JSON.stringify(sourceID ? { source_id: sourceID } : {}),
+    }),
+  searchKnowledge: (data: import("./types").SearchKnowledgeRequest, signal?: AbortSignal) =>
+    request<import("./types").SearchKnowledgeResponse>(
+      "/knowledge/search",
+      { method: "POST", body: JSON.stringify(data), signal },
+      { unwrapItems: false }
+    ),
+  listKnowledgeRevisionDocuments: (
+    revisionID: string,
+    params: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").KnowledgeDocumentListResponse>(
+      `/knowledge/revisions/${encodeURIComponent(revisionID)}/documents${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  getKnowledgeDocument: (revisionID: string, docID: string) =>
+    request<import("./types").KnowledgeDocument>(
+      `/knowledge/revisions/${encodeURIComponent(revisionID)}/documents/${encodeURIComponent(docID)}`
+    ),
+  listKnowledgeDocumentLinks: (docID: string, params: { limit?: number; offset?: number } = {}) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").KnowledgeDocumentLinksResponse>(
+      `/knowledge/documents/${encodeURIComponent(docID)}/links${qs}`,
+      {},
+      { unwrapItems: false }
+    )
+  },
 }

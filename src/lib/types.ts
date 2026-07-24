@@ -487,3 +487,209 @@ export interface SkillQualityRunsResponseDTO {
 export interface CreateSkillQualityRunRequestDTO {
   baseline_version_id?: string
 }
+
+// ─── Knowledge Registry (K1/K2) DTOs，与 backend/internal/knowledge/model.go 一致 ───
+
+export type KnowledgeSourceType = "git" | "local"
+
+export interface KnowledgeGitSyncState {
+  status: "succeeded" | "failed"
+  provider?: string
+  ref?: string
+  commit_sha?: string
+  package_hash?: string
+  error?: string
+  synced_at: string
+}
+
+export interface KnowledgeSourceMetadata {
+  git_sync?: KnowledgeGitSyncState
+  [key: string]: unknown
+}
+
+export interface KnowledgeSource {
+  id: string
+  account_id: string
+  user_id?: string
+  key_id?: string
+  name: string
+  type: KnowledgeSourceType
+  repository_url: string
+  package_path: string
+  default_ref: string
+  sync_mode: string
+  status: string
+  active_revision_id?: string
+  metadata?: KnowledgeSourceMetadata
+  created_at: string
+  updated_at: string
+}
+
+export interface KnowledgeSourceRevision {
+  id: string
+  account_id: string
+  source_id: string
+  revision_key: string
+  commit_sha: string
+  local_snapshot_id: string
+  tree_hash: string
+  package_hash: string
+  manifest?: KnowledgeManifest
+  status: string
+  error?: string
+  created_at: string
+}
+
+export interface KnowledgeManifest {
+  name: string
+  description?: string
+  profile?: string
+  language?: string
+  include?: string[]
+  exclude?: string[]
+  citation_policy?: string
+}
+
+export interface KnowledgeDocumentSummary {
+  id: string
+  source_id: string
+  revision_id: string
+  path: string
+  sha256: string
+  size_bytes: number
+  mime_type: string
+  indexable: boolean
+  created_at: string
+}
+
+export interface KnowledgeDocument {
+  id: string
+  account_id: string
+  source_id: string
+  revision_id: string
+  path: string
+  sha256: string
+  size_bytes: number
+  mime_type: string
+  indexable: boolean
+  content_snapshot?: string
+  created_at: string
+}
+
+export interface CreateKnowledgeSourceRequest {
+  name?: string
+  type: KnowledgeSourceType
+  repository_url: string
+  package_path?: string
+  default_ref?: string
+}
+
+export interface SyncKnowledgeSourceRequest {
+  ref?: string
+}
+
+export interface SyncKnowledgeSourceResponse {
+  source: KnowledgeSource
+  provider: string
+  ref: string
+  commit_sha: string
+  revision: KnowledgeSourceRevision
+  manifest: KnowledgeManifest
+  documents: KnowledgeDocumentSummary[]
+}
+
+export interface KnowledgeDocumentListResponse {
+  revision_id: string
+  items: KnowledgeDocumentSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface KnowledgeDocumentLinkItem {
+  direction: "out" | "in"
+  document_id?: string
+  path: string
+}
+
+export interface KnowledgeDocumentLinksResponse {
+  document_id: string
+  revision_id: string
+  items: KnowledgeDocumentLinkItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface KnowledgeCatalogItem {
+  source_id: string
+  name: string
+  description?: string
+  profile?: string
+  language?: string
+  citation_policy?: string
+  type: string
+  active_revision_id: string
+  package_hash: string
+  document_count: number
+  indexed_chunks: number
+  failed_chunks: number
+  pending_chunks: number
+  index_status: "indexed" | "partial" | "failed" | "not_indexed"
+}
+
+export interface KnowledgeCatalogResponse {
+  items: KnowledgeCatalogItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface IndexedKnowledgeSource {
+  source_id: string
+  name: string
+  revision_id: string
+  documents: number
+  chunks_indexed: number
+  chunks_failed: number
+  links_rebuilt: number
+  stale_deleted: number
+  truncated_documents: number
+}
+
+export interface KnowledgeIndexError {
+  source_id: string
+  error: string
+}
+
+export interface IndexKnowledgeResponse {
+  indexed: IndexedKnowledgeSource[]
+  errors: KnowledgeIndexError[]
+}
+
+export interface SearchKnowledgeRequest {
+  query: string
+  top_k?: number
+  source_ids?: string[]
+  include_content?: boolean
+}
+
+export interface KnowledgeSearchHit {
+  document_id: string
+  source_id: string
+  revision_id: string
+  path: string
+  heading_path?: string
+  chunk_key: string
+  knowledge_base?: string
+  score: number
+  rank: number
+  snippet: string
+  content?: string
+  neighbors: KnowledgeDocumentLinkItem[]
+}
+
+export interface SearchKnowledgeResponse {
+  items: KnowledgeSearchHit[]
+  total: number
+}
