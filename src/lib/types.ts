@@ -693,3 +693,116 @@ export interface SearchKnowledgeResponse {
   items: KnowledgeSearchHit[]
   total: number
 }
+
+// ─── Memory Plane (M1–M3) DTOs，与 backend/internal/memory/model.go 一致 ───
+
+export interface MemoryEntry {
+  id: string
+  scope_type: string
+  scope_key: string
+  memory_type: string
+  title: string
+  content: string
+  summary: string
+  confidence: number
+  importance: number
+  status: string
+  valid_from: string
+  valid_to?: string
+  superseded_by?: string
+  source_event_id?: string
+  extraction_method: string
+  access_count: number
+  useful_count: number
+  harmful_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MemoryEvidence {
+  id: string
+  memory_id: string
+  source_type: string
+  source_id: string
+  excerpt: string
+  created_at: string
+}
+
+export interface MemoryEntryDetail extends MemoryEntry {
+  evidence: MemoryEvidence[]
+  indexing?: { status: string; error?: string }
+}
+
+export interface MemorySearchItem {
+  entry: MemoryEntryDetail | null
+  rank: number
+  score: number
+  retrieval_score: number
+  feedback_adjustment: number
+  channels: string[]
+  hit_reason: string
+}
+
+export interface MemorySearchRequest {
+  query: string
+  top_k?: number
+  scope_type?: string
+  scope_key?: string
+  memory_type?: string
+  status?: string
+}
+
+export interface MemoryFeedback {
+  id: string
+  memory_id: string
+  signal: string
+  reason?: string
+  session_id?: string
+  skill_version_id?: string
+  observed_at: string
+  created_at: string
+}
+
+export interface MemoryTimelineItem {
+  kind: "skill_log" | "memory_event"
+  id: string
+  occurred_at: string
+  session_id?: string
+  skill_version_id?: string
+  skill_name?: string
+  skill_version?: string
+  outcome?: string
+  was_triggered?: boolean
+  failure_reason?: string
+  duration_ms?: number
+  event_type?: string
+  attributed: boolean
+}
+
+export interface MemoryTimelineResponse {
+  session_id: string
+  items: MemoryTimelineItem[]
+  total: number
+  skill_log_count: number
+  memory_event_count: number
+  unattributed_count: number
+  truncated: boolean
+}
+
+export interface MemoryEntryAttribution {
+  entry_id: string
+  source_event_id?: string
+  session_id?: string
+  skill_version_id?: string
+  skill_name?: string
+  skill_version?: string
+  resolution: "skill_version" | "session_only" | "event_only" | "none"
+  session_timeline?: MemoryTimelineItem[]
+}
+
+export interface MemoryEntryListResponse {
+  items: MemoryEntry[]
+  total: number
+  limit: number
+  offset: number
+}

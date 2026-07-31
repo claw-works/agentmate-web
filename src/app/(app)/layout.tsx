@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { useI18n } from "@/lib/i18n"
-import { LayoutDashboard, CheckSquare2, FileText, BarChart2, KeyRound, LogOut, Bookmark, Wallet, Zap, Library } from "lucide-react"
+import { LayoutDashboard, CheckSquare2, FileText, BarChart2, KeyRound, LogOut, Bookmark, Wallet, Zap, Library, Brain } from "lucide-react"
 
 const navKeys = [
   { href: "/dashboard", key: "dashboard" as const, icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const navKeys = [
   { href: "/expenses", key: "expenses" as const, icon: Wallet },
   { href: "/skills", key: "skills" as const, icon: Zap },
   { href: "/knowledge", key: "knowledge" as const, icon: Library },
+  { href: "/memory", key: "memory" as const, icon: Brain },
   { href: "/apikeys", key: "apikeys" as const, icon: KeyRound },
 ]
 

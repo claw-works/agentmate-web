@@ -359,4 +359,35 @@ export const api = {
       { unwrapItems: false }
     )
   },
+
+  // Memory Plane（只读观察）
+  listMemoryEntries: (
+    params: { scope_type?: string; scope_key?: string; memory_type?: string; status?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").MemoryEntryListResponse>(`/memory/entries${qs}`, { signal }, { unwrapItems: false })
+  },
+  getMemoryEntry: (id: string) =>
+    request<import("./types").MemoryEntryDetail>(`/memory/entries/${encodeURIComponent(id)}`),
+  searchMemory: (data: import("./types").MemorySearchRequest, signal?: AbortSignal) =>
+    request<{ items: import("./types").MemorySearchItem[]; total: number }>(
+      "/memory/search",
+      { method: "POST", body: JSON.stringify(data), signal },
+      { unwrapItems: false }
+    ),
+  listMemoryFeedback: (id: string, limit?: number) => {
+    const qs = limit ? `?limit=${limit}` : ""
+    return request<{ items: import("./types").MemoryFeedback[]; total: number }>(
+      `/memory/entries/${encodeURIComponent(id)}/feedback${qs}`,
+      {},
+      { unwrapItems: false }
+    )
+  },
+  getMemoryAttribution: (id: string) =>
+    request<import("./types").MemoryEntryAttribution>(`/memory/entries/${encodeURIComponent(id)}/attribution`),
+  getMemoryTimeline: (params: { session_id?: string; skill_version_id?: string; limit?: number }, signal?: AbortSignal) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").MemoryTimelineResponse>(`/memory/timeline${qs}`, { signal }, { unwrapItems: false })
+  },
 }
