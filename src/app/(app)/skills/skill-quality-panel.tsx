@@ -230,7 +230,7 @@ export function SkillQualityPanel({ active, versionID, skillName, version, packa
 
   if (!entry.run) {
     return (
-      <StateCard tone="empty" icon={<CircleSlash2 className="size-6" />} title="尚无 Quality 报告" text={`v${version} 还没有确定性检查证据。运行只创建审计报告，不会发布版本、创建 PR 或修改技能内容。`}>
+      <StateCard tone="empty" icon={<CircleSlash2 className="size-6" />} title="尚无 Quality 报告" text={`${version} 还没有确定性检查证据。运行只创建审计报告，不会发布版本、创建 PR 或修改技能内容。`}>
         <RunButton running={running} onRun={() => void runQualityChecks()} />
       </StateCard>
     )
@@ -248,7 +248,7 @@ export function SkillQualityPanel({ active, versionID, skillName, version, packa
       <div className="flex flex-col gap-3 rounded-xl border border-[#29293a] bg-[#0b0b12] p-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-slate-100">{skillName} · v{version}</h3>
+            <h3 className="font-semibold text-slate-100">{skillName} · {version}</h3>
             <Badge className={hashCurrent ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}>
               包证据 {hashCurrent ? "current" : "stale"}
             </Badge>

@@ -43,7 +43,12 @@ import { SkillQualityPanel } from "./skill-quality-panel"
 const CATALOG_PAGE_SIZE = 18
 const RESOURCE_PAGE_SIZE = 20
 
-type DetailTab = "overview" | "instructions" | "resources" | "quality" | "manage"
+// Detail tabs describe the selected skill only. Management is a page-level view
+// (see PageView), not a detail tab: registering sources, publishing versions and
+// indexing are account-wide operations, and nesting them under one skill's detail
+// implied they act on that skill.
+type DetailTab = "overview" | "instructions" | "resources" | "quality"
+type PageView = "catalog" | "manage"
 type Notice = { tone: "success" | "warning" | "error"; text: string }
 type AsyncEntry<T> = { data?: T; loading: boolean; error?: string }
 type ResourceListEntry = {
@@ -70,6 +75,7 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
   const [catalogQuery, setCatalogQuery] = useState("")
   const [selectedItem, setSelectedItem] = useState<SkillCatalogItemDTO | null>(null)
   const [activeTab, setActiveTab] = useState<DetailTab>("overview")
+  const [view, setView] = useState<PageView>("catalog")
   const [instructions, setInstructions] = useState<Record<string, AsyncEntry<SkillInstructionsDTO>>>({})
   const [resources, setResources] = useState<Record<string, ResourceListEntry>>({})
   const [resourceContents, setResourceContents] = useState<Record<string, AsyncEntry<SkillResourceDTO>>>({})
@@ -298,16 +304,38 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
             <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">先发现能力，再按需读取上下文</h1>
             <p className="mt-2 text-sm leading-6 text-slate-400">目录卡片只加载 L0 元数据。说明、资源清单和文本正文分别在首次访问时加载，避免把无关内容塞进 agent 上下文。</p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={compilingVersionID !== null}
-            onClick={() => void handleCompile()}
-            className="border-cyan-400/25 bg-cyan-400/5 text-cyan-100 hover:bg-cyan-400/10"
-          >
-            {compilingVersionID === "__all__" ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
-            编译全部 active
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div role="tablist" aria-label="页面视图" className="flex rounded-lg border border-[#2a2a3a] bg-[#0b0b12] p-1">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "catalog"}
+                onClick={() => setView("catalog")}
+                className={`rounded-md px-4 py-1.5 text-sm transition-colors ${view === "catalog" ? "bg-cyan-500/15 text-cyan-200" : "text-slate-400 hover:text-slate-200"}`}
+              >
+                目录
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "manage"}
+                onClick={() => setView("manage")}
+                className={`rounded-md px-4 py-1.5 text-sm transition-colors ${view === "manage" ? "bg-cyan-500/15 text-cyan-200" : "text-slate-400 hover:text-slate-200"}`}
+              >
+                管理
+              </button>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={compilingVersionID !== null}
+              onClick={() => void handleCompile()}
+              className="border-cyan-400/25 bg-cyan-400/5 text-cyan-100 hover:bg-cyan-400/10"
+            >
+              {compilingVersionID === "__all__" ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
+              编译全部 active
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -318,13 +346,23 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
         </div>
       ) : null}
 
+      {view === "manage" ? (
+        <section aria-labelledby="skill-manage-heading" className="rounded-xl border border-[#1e1e2e] bg-[#101018]">
+          <div className="border-b border-[#1e1e2e] p-4">
+            <h2 id="skill-manage-heading" className="font-semibold text-slate-100">技能管理</h2>
+            <p className="mt-1 text-xs text-slate-500">注册来源、发布与激活版本、索引与运行日志。这些是账户级操作，不隶属于某一个技能。</p>
+          </div>
+          <div className="p-4 md:p-5">{renderManagement(refreshCatalogAndClearCaches, selectedItem?.skill_name ?? null)}</div>
+        </section>
+      ) : (
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
       <section aria-labelledby="skill-catalog-heading" className="rounded-xl border border-[#1e1e2e] bg-[#101018]">
-        <div className="flex flex-col gap-3 border-b border-[#1e1e2e] p-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-3 border-b border-[#1e1e2e] p-4">
           <div>
             <h2 id="skill-catalog-heading" className="font-semibold text-slate-100">技能目录</h2>
             <p className="mt-1 text-xs text-slate-500">{catalogTotal} 个 active 技能{catalogQuery ? ` · 搜索“${catalogQuery}”` : ""}</p>
           </div>
-          <form onSubmit={handleSearch} role="search" className="flex w-full gap-2 lg:max-w-xl">
+          <form onSubmit={handleSearch} role="search" className="flex w-full gap-2">
             <Label htmlFor="skill-catalog-query" className="sr-only">搜索技能目录</Label>
             <Input
               id="skill-catalog-query"
@@ -334,8 +372,8 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
               placeholder="按名称、描述或触发条件搜索"
               className="border-[#2a2a3a] bg-[#0b0b12] text-slate-100 placeholder:text-slate-600"
             />
-            <Button type="submit" disabled={catalogLoading} className="bg-cyan-600 text-white hover:bg-cyan-500">
-              <Search className="size-4" /> 搜索
+            <Button type="submit" size="icon" aria-label="搜索" disabled={catalogLoading} className="bg-cyan-600 text-white hover:bg-cyan-500">
+              <Search className="size-4" />
             </Button>
             <Button
               type="button"
@@ -351,7 +389,7 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
           </form>
         </div>
 
-        <div className="p-4">
+        <div className="p-3">
           {catalogLoading ? (
             <div role="status" aria-live="polite" className="flex min-h-48 items-center justify-center text-sm text-slate-500">
               <Loader2 className="mr-2 size-4 animate-spin" /> 正在加载 L0 目录…
@@ -361,7 +399,7 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
           ) : catalogItems.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[#303044] p-10 text-center text-sm text-slate-500">没有匹配的 active 技能。</div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
               {catalogItems.map((item) => (
                 <CatalogCard
                   key={item.version_id}
@@ -396,33 +434,23 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
 
       <section aria-labelledby="skill-detail-heading" className="min-w-0 rounded-xl border border-[#1e1e2e] bg-[#101018]">
         {!selectedItem ? (
-          activeTab === "manage" ? (
+          <div className="flex min-h-64 flex-col items-center justify-center gap-3 px-6 text-center text-slate-500">
+            <Boxes className="size-9 text-slate-700" />
             <div>
-              <div className="flex items-center justify-between border-b border-[#1e1e2e] p-4">
-                <h2 id="skill-detail-heading" className="font-medium text-slate-200">技能管理</h2>
-                <Button type="button" variant="ghost" onClick={() => setActiveTab("overview")} className="text-slate-400">返回目录</Button>
-              </div>
-              <div className="p-4 md:p-5">{renderManagement(refreshCatalogAndClearCaches, null)}</div>
+              <h2 id="skill-detail-heading" className="font-medium text-slate-300">选择一个技能</h2>
+              <p className="mt-1 text-sm">选中只展示 L0 元数据，不会自动请求说明或资源正文。</p>
             </div>
-          ) : (
-            <div className="flex min-h-64 flex-col items-center justify-center gap-3 px-6 text-center text-slate-500">
-              <Boxes className="size-9 text-slate-700" />
-              <div>
-                <h2 id="skill-detail-heading" className="font-medium text-slate-300">选择一个技能</h2>
-                <p className="mt-1 text-sm">选中只展示 L0 元数据，不会自动请求说明或资源正文。</p>
-              </div>
-              <Button type="button" variant="outline" onClick={() => setActiveTab("manage")} className="border-[#2a2a3a] bg-[#12121a] text-slate-200">
-                <Settings2 className="size-4" /> 注册来源或发布版本
-              </Button>
-            </div>
-          )
+            <Button type="button" variant="outline" onClick={() => setView("manage")} className="border-[#2a2a3a] bg-[#12121a] text-slate-200">
+              <Settings2 className="size-4" /> 去管理：注册来源或发布版本
+            </Button>
+          </div>
         ) : (
           <div>
             <div className="flex flex-col gap-3 border-b border-[#1e1e2e] p-4 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 id="skill-detail-heading" className="break-all text-xl font-semibold text-white">{selectedItem.skill_name}</h2>
-                  <Badge className="bg-emerald-500/10 text-emerald-300">v{selectedItem.version}</Badge>
+                  <Badge className="bg-emerald-500/10 text-emerald-300">{selectedItem.version}</Badge>
                   <Badge className="bg-cyan-500/10 text-cyan-300">{selectedItem.resource_count} resources</Badge>
                 </div>
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">{selectedItem.description || "该技能没有目录描述。"}</p>
@@ -445,7 +473,6 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
                 <TabsTrigger value="instructions" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><BookOpenText />说明</TabsTrigger>
                 <TabsTrigger value="resources" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><FileText />资源</TabsTrigger>
                 <TabsTrigger value="quality" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><ClipboardCheck />Quality</TabsTrigger>
-                <TabsTrigger value="manage" className="flex-none px-3 text-slate-400 data-active:text-cyan-200"><Settings2 />管理</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="p-4 md:p-5">
@@ -474,13 +501,12 @@ export function SkillCatalogPage({ renderManagement }: SkillCatalogPageProps) {
                   packageHash={selectedItem.package_hash}
                 />
               </TabsContent>
-              <TabsContent value="manage" className="p-4 md:p-5">
-                {activeTab === "manage" ? renderManagement(refreshCatalogAndClearCaches, selectedItem.skill_name) : null}
-              </TabsContent>
             </Tabs>
           </div>
         )}
       </section>
+      </div>
+      )}
     </div>
   )
 }
@@ -491,26 +517,19 @@ function CatalogCard({ item, selected, onSelect }: { item: SkillCatalogItemDTO; 
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`group min-h-52 rounded-xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${selected ? "border-cyan-400/60 bg-cyan-400/10 shadow-lg shadow-cyan-950/20" : "border-[#252536] bg-[#0b0b12] hover:-translate-y-0.5 hover:border-cyan-500/35"}`}
+      className={`group w-full rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${selected ? "border-cyan-400/60 bg-cyan-400/10" : "border-[#252536] bg-[#0b0b12] hover:border-cyan-500/35"}`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold text-slate-100">{item.skill_name}</div>
-          <div className="mt-1 text-xs text-slate-600">v{item.version} · {formatDate(item.published_at)}</div>
+          <div className="truncate font-medium text-slate-100">{item.skill_name}</div>
+          <div className="mt-0.5 truncate text-xs text-slate-600">{item.version} · {formatDate(item.published_at)}</div>
         </div>
-        <Badge className="shrink-0 bg-slate-500/10 text-slate-300">{item.resource_count} files</Badge>
+        <Badge className="shrink-0 bg-slate-500/10 text-slate-300">{item.resource_count}</Badge>
       </div>
-      <p className="mt-3 line-clamp-3 min-h-15 text-sm leading-5 text-slate-400">{item.description || "无描述"}</p>
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {(item.resource_kinds ?? []).slice(0, 3).map((kind) => <Badge key={kind} className="bg-cyan-500/8 text-cyan-300/80">{kind}</Badge>)}
-        {(item.triggers ?? []).slice(0, 2).map((trigger) => <Badge key={trigger} className="max-w-40 truncate bg-amber-500/8 text-amber-200/80">{trigger}</Badge>)}
-      </div>
-      <div className="mt-4 flex items-center justify-between border-t border-[#20202e] pt-3 text-[11px] text-slate-600">
-        <span className={item.artifact_available ? "" : "text-amber-300"}>
-          {item.artifact_available ? `${item.compiler_name} ${item.compiler_version}` : "basic fallback · 待编译"}
-        </span>
-        <span className="font-mono">{shortHash(item.package_hash)}</span>
-      </div>
+      <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500">{item.description || "无描述"}</p>
+      {!item.artifact_available ? (
+        <div className="mt-1.5 text-[11px] text-amber-300">basic fallback · 待编译</div>
+      ) : null}
     </button>
   )
 }

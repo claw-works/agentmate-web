@@ -375,7 +375,7 @@ function SkillManagementConsole({
                   <Badge className="bg-cyan-500/10 text-cyan-300">#{item.rank}</Badge>
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                  <span>v{item.version}</span>
+                  <span>{item.version}</span>
                   <span>score {item.score.toFixed(3)}</span>
                   {item.published_at && <span>{formatDate(item.published_at)}</span>}
                 </div>
@@ -431,7 +431,7 @@ function SkillManagementConsole({
                       <div className="truncate text-sm font-medium text-slate-100">{skill.name}</div>
                       <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{skill.description || "无描述"}</p>
                     </div>
-                    {skill.activeVersion && <Badge className="bg-emerald-500/10 text-emerald-300">v{skill.activeVersion}</Badge>}
+                    {skill.activeVersion && <Badge className="bg-emerald-500/10 text-emerald-300">{skill.activeVersion}</Badge>}
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                     <span>{skill.versionCount} versions</span>
@@ -462,7 +462,7 @@ function SkillManagementConsole({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="break-all text-xl font-semibold text-white">{selected}</h2>
-                    {selectedSkill?.activeVersion && <Badge className="bg-emerald-500/10 text-emerald-300">active v{selectedSkill.activeVersion}</Badge>}
+                    {selectedSkill?.activeVersion && <Badge className="bg-emerald-500/10 text-emerald-300">active {selectedSkill.activeVersion}</Badge>}
                   </div>
                   <p className="mt-1 max-w-3xl text-sm text-slate-500">{selectedSkill?.description || "该技能还没有 front matter description。"}</p>
                 </div>
@@ -1033,7 +1033,7 @@ function VersionRow({ version, busy, onActivate }: { version: SkillVersion; busy
     <div className="grid gap-3 border-b border-[#1e1e2e] bg-[#0b0b12] p-3 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-slate-100">v{version.version}</span>
+          <span className="font-medium text-slate-100">{version.version}</span>
           {version.is_active && <Badge className="bg-emerald-500/10 text-emerald-300">active</Badge>}
         </div>
         <p className="mt-1 line-clamp-2 text-sm text-slate-500">{version.change_summary || descriptionFromContent(version.content) || "无变更说明"}</p>
