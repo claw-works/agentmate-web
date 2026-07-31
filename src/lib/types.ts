@@ -624,10 +624,14 @@ export interface KnowledgeDocumentLinksResponse {
 export interface KnowledgeCatalogItem {
   source_id: string
   name: string
+  domain?: string
   description?: string
   profile?: string
   language?: string
   citation_policy?: string
+  // 声明的匹配面：Skill knowledge contract 的 discovery 就是对这两个列表做匹配。
+  capabilities?: string[]
+  languages?: string[]
   type: string
   active_revision_id: string
   package_hash: string

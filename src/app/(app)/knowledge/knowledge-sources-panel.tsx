@@ -36,6 +36,8 @@ export function KnowledgeSourcesPanel({
 }) {
   const [sources, setSources] = useState<KnowledgeSource[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [syncingSourceID, setSyncingSourceID] = useState<string | null>(null)
@@ -51,18 +53,27 @@ export function KnowledgeSourcesPanel({
     }
   }, [])
 
-  const loadSources = useCallback(async () => {
-    setLoading(true)
+  // 该接口不返回 total，只能用满页判定：取回整页说明可能还有下一页。
+  const SOURCES_PAGE_SIZE = 20
+
+  const loadSources = useCallback(async (offset = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoading(true)
     setError(null)
     try {
-      const items = await api.listKnowledgeSources({ limit: 100 })
+      const items = await api.listKnowledgeSources({ limit: SOURCES_PAGE_SIZE, offset })
       if (!mounted.current) return
-      setSources(items ?? [])
+      const nextItems = items ?? []
+      setSources((current) => (append ? [...current, ...nextItems] : nextItems))
+      setHasMore(nextItems.length === SOURCES_PAGE_SIZE)
     } catch (err) {
       if (!mounted.current) return
       setError(errorMessage(err))
     } finally {
-      if (mounted.current) setLoading(false)
+      if (mounted.current) {
+        setLoading(false)
+        setLoadingMore(false)
+      }
     }
   }, [])
 
@@ -312,6 +323,20 @@ export function KnowledgeSourcesPanel({
               </div>
             )
           })}
+          {hasMore ? (
+            <div className="flex justify-center pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loadingMore}
+                onClick={() => void loadSources(sources.length, true)}
+                className="border-[#2a2a3a] bg-[#12121a] text-slate-200"
+              >
+                {loadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
+                加载更多来源
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </section>
