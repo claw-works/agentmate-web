@@ -12,6 +12,7 @@ import {
   FileText,
   X,
 } from "lucide-react"
+import { HtmlReport } from "@/components/html-report"
 import { Markdown } from "@/components/markdown"
 import { api } from "@/lib/api"
 import { PublicReport, PublicReportSource } from "@/lib/types"
@@ -29,41 +30,6 @@ function formatDate(value: string) {
 function contentStartsWithTitle(report: PublicReport) {
   const firstLine = report.content?.split("\n").find((line) => line.trim()) ?? ""
   return firstLine.replace(/^#+\s*/, "").trim() === report.title
-}
-
-function HtmlReport({ report }: { report: PublicReport }) {
-  const [height, setHeight] = useState(480)
-  const resizeObserver = useRef<ResizeObserver | null>(null)
-
-  useEffect(() => {
-    return () => resizeObserver.current?.disconnect()
-  }, [])
-
-  const handleLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    resizeObserver.current?.disconnect()
-    const document = event.currentTarget.contentDocument
-    if (!document) return
-
-    const updateHeight = () => {
-      setHeight(Math.max(document.body?.scrollHeight ?? 0, document.documentElement.scrollHeight, 320))
-    }
-
-    updateHeight()
-    resizeObserver.current = new ResizeObserver(updateHeight)
-    resizeObserver.current.observe(document.documentElement)
-  }
-
-  return (
-    <iframe
-      srcDoc={report.content ?? ""}
-      className="w-full border-0 bg-white"
-      style={{ height }}
-      title={report.title}
-      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-      referrerPolicy="no-referrer"
-      onLoad={handleLoad}
-    />
-  )
 }
 
 export default function HomePage() {

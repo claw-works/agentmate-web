@@ -56,6 +56,12 @@ function getPrimaryTag(tags: string[]): ReportTag {
 
 function getReportId(pathname: string, fallback: string) {
   const parts = pathname.split("/").filter(Boolean)
+  // 管理详情挂在 /reports/manage/<id>；静态导出下 useParams 只会拿到
+  // placeholder，真实 id 要从路径里读。
+  const manageIndex = parts.indexOf("manage")
+  if (manageIndex >= 0 && parts[manageIndex - 1] === "reports") {
+    return parts[manageIndex + 1] ?? fallback
+  }
   const reportsIndex = parts.indexOf("reports")
   return reportsIndex >= 0 ? parts[reportsIndex + 1] ?? fallback : fallback
 }

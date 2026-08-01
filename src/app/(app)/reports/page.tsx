@@ -154,7 +154,7 @@ export default function ReportsPage() {
                 ? "bg-[#0d1025] border border-[#1e2545]"
                 : "bg-[#111118] border border-[#1e1e2e]"
             }`}
-            onClick={() => router.push(`/reports/${r.id}`)}
+            onClick={() => router.push(`/reports/manage/${r.id}`)}
           >
             {/* Format badge top-right */}
             <span className={`absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-medium border ${
