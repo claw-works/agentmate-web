@@ -332,6 +332,9 @@ export default function WorkingSessionsPage() {
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
                       {item.agent ? <Badge className="bg-violet-500/10 text-violet-300">{item.agent}</Badge> : null}
                       {item.engine ? <Badge className={engineBadgeClass(item.engine)}>{item.engine}</Badge> : null}
+                      {item.scope_type && item.scope_type !== "global" ? (
+                        <Badge className="bg-teal-500/10 text-teal-300">{item.scope_type}:{item.scope_key}</Badge>
+                      ) : null}
                       <span>{item.last_seq} 条序号</span>
                       <span>{formatTime(item.updated_at)}</span>
                     </div>

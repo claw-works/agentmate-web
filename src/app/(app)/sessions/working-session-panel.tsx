@@ -163,12 +163,18 @@ export function WorkingSessionPanel({
               </Badge>
               {session.agent ? <Badge className="bg-violet-500/10 text-violet-300">{session.agent}</Badge> : null}
               {session.engine ? <Badge className={engineBadgeClass(session.engine)}>{session.engine}</Badge> : null}
+              {session.scope_type && session.scope_type !== "global" ? (
+                <Badge className="bg-teal-500/10 text-teal-300">
+                  {session.scope_type}:{session.scope_key}
+                </Badge>
+              ) : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <span className="font-mono">{session.id}</span>
               <span className="inline-flex items-center gap-1">
                 <Hash className="size-3" /> last_seq {session.last_seq}
               </span>
+              <span>已蒸馏至 {session.distilled_seq}</span>
               <span>创建 {formatTime(session.created_at)}</span>
               <span>更新 {formatTime(session.updated_at)}</span>
             </div>
@@ -398,6 +404,8 @@ function EditSessionForm({
   const [title, setTitle] = useState(session.title)
   const [status, setStatus] = useState(session.status)
   const [engine, setEngine] = useState(session.engine)
+  const [scopeType, setScopeType] = useState(session.scope_type || "global")
+  const [scopeKey, setScopeKey] = useState(session.scope_key)
   const [metadataDraft, setMetadataDraft] = useState(
     hasMetadata(session.metadata) ? JSON.stringify(session.metadata, null, 2) : ""
   )
@@ -414,6 +422,14 @@ function EditSessionForm({
     if (title !== session.title) payload.title = title
     if (status !== session.status) payload.status = status
     if (engine.trim().toLowerCase() !== session.engine) payload.engine = engine
+    if (scopeType !== (session.scope_type || "global")) payload.scope_type = scopeType
+    if (scopeKey.trim() !== session.scope_key) payload.scope_key = scopeKey
+
+    // 前端先挡一次：非 global 而没有 key 会被服务端拒绝，就地报错比等一个 400 更快。
+    if (scopeType !== "global" && scopeKey.trim() === "") {
+      setError("非 global 的范围必须填 scope_key（例如项目标识）")
+      return
+    }
 
     const originalMetadata = hasMetadata(session.metadata) ? JSON.stringify(session.metadata, null, 2) : ""
     if (metadataDraft.trim() !== originalMetadata.trim()) {
@@ -475,6 +491,33 @@ function EditSessionForm({
         />
         <p className="text-xs text-slate-500">
           改这里是「从现在起切到这个引擎」：已写入的条目保持它们各自的引擎不变，之后追加的条目继承新值。服务端会转成小写，最长 100 字符。
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="session-scope-type">范围</Label>
+        <div className="flex gap-2">
+          <select
+            id="session-scope-type"
+            value={scopeType}
+            onChange={(event) => setScopeType(event.target.value)}
+            className="h-9 w-[140px] rounded-md border border-[#2a2a3a] bg-[#0b0b12] px-2 text-sm text-slate-200"
+          >
+            {["global", "project", "repository", "agent", "session"].map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </select>
+          <Input
+            value={scopeKey}
+            onChange={(event) => setScopeKey(event.target.value)}
+            placeholder={scopeType === "global" ? "global 不需要 key" : "项目标识，例如 agentmate"}
+            disabled={scopeType === "global"}
+            aria-label="scope key"
+            className="border-[#2a2a3a] bg-[#0b0b12] text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          这段对话关于什么。设成 project 后，蒸馏会把项目规矩归到这个项目、个人偏好升到 global；不设则只抽与上下文无关的事实。改动只影响之后的蒸馏，已抽出的候选保持原有范围。
         </p>
       </div>
 

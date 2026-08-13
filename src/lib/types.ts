@@ -831,10 +831,16 @@ export interface WorkingSession {
   /** 会话当前的执行引擎（kiro-cli / claude-code / codex / pi 等）。与 agent 正交：
    *  agent 是产品，engine 是它底下跑的执行器，会话进行中可以切换。 */
   engine: string
+  /** 这段对话关于什么，通常是 project:<key>。蒸馏据此把项目规矩归到项目、个人偏好升到
+   *  global。它不控制可见性（那只由 account 决定），控制的是相关性。 */
+  scope_type: string
+  scope_key: string
   status: string
   metadata: unknown
   /** 已分配的最高序号，只增不减；删条目会留下空洞。 */
   last_seq: number
+  /** 已蒸馏到的序号。与 last_seq 的差就是还有多少原文没被抽取过。 */
+  distilled_seq: number
   created_at: string
   updated_at: string
 }
@@ -890,5 +896,8 @@ export interface UpdateWorkingSessionRequest {
   status?: string
   /** 改 engine 就是"从现在起切到这个引擎"：已写入的条目保持原样，之后追加的继承新值。 */
   engine?: string
+  /** 改 scope 就是"从现在起这段对话属于这个项目"：已抽出的候选保持原有 scope。 */
+  scope_type?: string
+  scope_key?: string
   metadata?: Record<string, unknown>
 }
