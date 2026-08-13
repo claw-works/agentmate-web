@@ -390,4 +390,59 @@ export const api = {
     const qs = "?" + buildParams(params)
     return request<import("./types").MemoryTimelineResponse>(`/memory/timeline${qs}`, { signal }, { unwrapItems: false })
   },
+
+  // Working memory（会话原始记录：审计查看 / 编辑会话 / 删除）
+  //
+  // 全部传 unwrapItems: false —— 会话列表要 total 做分页，回放要 has_more 和
+  // last_seq，被默认拆包成 items 数组就都丢了。
+  listWorkingSessions: (
+    params: { status?: string; agent?: string; engine?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").WorkingSessionListResponse>(
+      `/memory/working/sessions${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  // 已在用的 engine 值。engine 是自由文本，列表页据此提供下拉而不是让人手打——
+  // claude-code 和 claudecode 会把同一个引擎的审计数据裂成两份。
+  listWorkingEngines: (signal?: AbortSignal) =>
+    request<{ items: import("./types").WorkingEngineUsage[]; total: number; note: string }>(
+      "/memory/working/engines",
+      { signal },
+      { unwrapItems: false }
+    ),
+  getWorkingSession: (id: string, signal?: AbortSignal) =>
+    request<import("./types").WorkingSession>(`/memory/working/sessions/${encodeURIComponent(id)}`, { signal }),
+  replayWorkingItems: (
+    id: string,
+    params: { after_seq?: number; limit?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").WorkingReplayResponse>(
+      `/memory/working/sessions/${encodeURIComponent(id)}/items${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  updateWorkingSession: (id: string, data: import("./types").UpdateWorkingSessionRequest) =>
+    request<import("./types").WorkingSession>(`/memory/working/sessions/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteWorkingSession: (id: string) =>
+    request<import("./types").DeleteWorkingSessionResponse>(
+      `/memory/working/sessions/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+      { unwrapItems: false }
+    ),
+  deleteWorkingItem: (id: string, seq: number) =>
+    request<{ deleted: boolean; seq: number }>(
+      `/memory/working/sessions/${encodeURIComponent(id)}/items/${seq}`,
+      { method: "DELETE" },
+      { unwrapItems: false }
+    ),
 }

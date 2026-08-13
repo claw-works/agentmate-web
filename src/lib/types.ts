@@ -810,3 +810,85 @@ export interface MemoryEntryListResponse {
   limit: number
   offset: number
 }
+
+
+// ─── Working memory（会话级原始记录），与 backend/internal/memory/working_model.go 一致 ───
+//
+// 这一层保存的是会话原文：对话消息、工具结果、草稿。它不进检索索引，只按
+// 服务端分配的 seq 顺序回放，所以前端能做的是审计（看）和删除，不做搜索。
+
+export type WorkingSessionStatus = "active" | "archived"
+export type WorkingItemType = "message" | "tool_result" | "draft"
+export type WorkingItemRole = "system" | "user" | "assistant" | "tool"
+
+export interface WorkingSession {
+  id: string
+  account_id: string
+  user_id: string
+  key_id?: string
+  title: string
+  agent: string
+  /** 会话当前的执行引擎（kiro-cli / claude-code / codex / pi 等）。与 agent 正交：
+   *  agent 是产品，engine 是它底下跑的执行器，会话进行中可以切换。 */
+  engine: string
+  status: string
+  metadata: unknown
+  /** 已分配的最高序号，只增不减；删条目会留下空洞。 */
+  last_seq: number
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkingItem {
+  id: string
+  account_id: string
+  user_id: string
+  key_id?: string
+  session_id: string
+  seq: number
+  item_type: string
+  role?: string
+  /** 产出这一条的引擎，写入时固化。会话之后切换引擎不会改变已写入的条目。 */
+  engine?: string
+  content: string
+  metadata: unknown
+  idempotency_key: string
+  content_hash: string
+  created_at: string
+}
+
+/** 本账号已在用的 engine 值及用量。engine 是自由文本，靠它防拼写漂移。 */
+export interface WorkingEngineUsage {
+  engine: string
+  session_count: number
+  item_count: number
+}
+
+export interface WorkingSessionListResponse {
+  items: WorkingSession[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface WorkingReplayResponse {
+  session_id: string
+  items: WorkingItem[]
+  after_seq: number
+  last_seq: number
+  /** 服务端精确判定，不要用 items.length === limit 推断：删条目会留下序号空洞。 */
+  has_more: boolean
+}
+
+export interface DeleteWorkingSessionResponse {
+  deleted: boolean
+  items_deleted: number
+}
+
+export interface UpdateWorkingSessionRequest {
+  title?: string
+  status?: string
+  /** 改 engine 就是"从现在起切到这个引擎"：已写入的条目保持原样，之后追加的继承新值。 */
+  engine?: string
+  metadata?: Record<string, unknown>
+}
