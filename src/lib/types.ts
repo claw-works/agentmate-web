@@ -715,7 +715,11 @@ export interface MemoryEntry {
   valid_to?: string
   superseded_by?: string
   source_event_id?: string
+  /** 产出这条候选的蒸馏运行；只有 extraction_method='llm' 的条目才有值。 */
+  distill_run_id?: string
   extraction_method: string
+  /** 抽取器标识，形如 "<model>/prompt-<版本>"。审核时用来判断"这批候选出自哪个配置"。 */
+  extractor_version: string
   access_count: number
   useful_count: number
   harmful_count: number
@@ -900,4 +904,61 @@ export interface UpdateWorkingSessionRequest {
   scope_type?: string
   scope_key?: string
   metadata?: Record<string, unknown>
+}
+
+// ─── 蒸馏（对话原文 → durable memory 候选），与 backend/internal/memory/distill_model.go 一致 ───
+//
+// 候选一律以 pending 落库、不参与检索，要经人工放行才进召回。所以审核界面是这套机制
+// 的必要组成部分，不是可选增强。
+
+export type DistillRunStatus = "queued" | "running" | "succeeded" | "failed" | "skipped"
+
+export interface DistillRun {
+  id: string
+  account_id: string
+  user_id: string
+  key_id?: string
+  session_id: string
+  from_seq: number
+  to_seq: number
+  /** 覆盖率显式记录：读了多少 / 一共有多少。不靠推断，否则"没抽出东西"无从解释。 */
+  items_examined: number
+  items_available: number
+  candidates_written: number
+  candidates_duplicate: number
+  trigger: "on_demand" | "sweep"
+  status: string
+  model: string
+  prompt_version: string
+  input_tokens: number
+  output_tokens: number
+  cost_micros: number
+  /** false 表示"没人告诉我们单价"，区别于"真的没花钱"。 */
+  cost_priced: boolean
+  error?: string
+  note?: string
+  attempt: number
+  max_attempts: number
+  queued_at: string
+  started_at?: string
+  finished_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DistillRunDetail extends DistillRun {
+  candidates: MemoryEntry[]
+}
+
+export interface DistillRunListResponse {
+  items: DistillRun[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface PromoteEntryResponse {
+  entry: MemoryEntry
+  /** 放行是候选第一次进检索索引，失败了必须报出来——否则会有一条"已放行却搜不到"的记忆。 */
+  indexing?: { status: string; document_id?: string; error?: string }
 }

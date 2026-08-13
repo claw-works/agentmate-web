@@ -8,6 +8,7 @@ import {
   Loader2,
   MessagesSquare,
   Pencil,
+  Sparkles,
   Trash2,
 } from "lucide-react"
 import { api } from "@/lib/api"
@@ -89,6 +90,7 @@ export function WorkingSessionPanel({
   onItemDeleted,
   onSessionUpdated,
   onSessionDeleted,
+  onDistilled,
 }: {
   session: WorkingSession
   items: WorkingItem[]
@@ -100,12 +102,38 @@ export function WorkingSessionPanel({
   onItemDeleted: (seq: number) => void
   onSessionUpdated: (session: WorkingSession) => void
   onSessionDeleted: (itemsDeleted: number) => void
+  onDistilled?: () => void
 }) {
   const [editOpen, setEditOpen] = useState(false)
   const [deleteSessionOpen, setDeleteSessionOpen] = useState(false)
   const [deleteSeq, setDeleteSeq] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [distilling, setDistilling] = useState(false)
+  const [distillResult, setDistillResult] = useState<string | null>(null)
+
+  // 手动触发蒸馏。不做也会被定时扫描兜住，这个按钮是给"我现在就想看看这段对话能抽出
+  // 什么"的场合——审计时最自然的动作。
+  const handleDistill = async () => {
+    setDistilling(true)
+    setActionError(null)
+    setDistillResult(null)
+    try {
+      const run = await api.distillSession(session.id)
+      if (run.candidates_written > 0) {
+        setDistillResult(
+          `抽出 ${run.candidates_written} 条候选，等待审核（在「记忆」页放行或拒绝）。读了 ${run.items_examined}/${run.items_available} 条原文。`
+        )
+      } else {
+        setDistillResult(`没有产出候选。${run.note || "这段对话里没有值得永久记住的事实。"}`)
+      }
+      onDistilled?.()
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setDistilling(false)
+    }
+  }
 
   // 已加载条目按引擎归类，用于提示"这段历史跨了几个引擎"。只统计已加载的部分，
   // 所以文案说的是"已加载的条目"而不是整个会话——没读到的那些不能替它们下结论。
@@ -184,6 +212,17 @@ export function WorkingSessionPanel({
               type="button"
               variant="outline"
               size="sm"
+              disabled={distilling}
+              onClick={() => void handleDistill()}
+              className="border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
+            >
+              {distilling ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+              蒸馏
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setEditOpen(true)}
               className="border-[#2a2a3a] bg-[#12121a] text-slate-300"
             >
@@ -213,6 +252,12 @@ export function WorkingSessionPanel({
         {actionError ? (
           <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             {actionError}
+          </div>
+        ) : null}
+
+        {distillResult ? (
+          <div role="status" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+            {distillResult}
           </div>
         ) : null}
       </div>
@@ -245,7 +290,6 @@ export function WorkingSessionPanel({
         <p className="mb-3 rounded-lg border border-[#242436] bg-[#0b0b12] px-3 py-2 text-xs leading-5 text-slate-500">
           条目是原始记录，只能删除、不能编辑：改过的对话不再是当时发生过什么的记录。删除后序号不会被复用，回放方看到的是一个空洞而不是同一个序号下换了内容。每条上的引擎徽章是写入时固化的，之后切换会话引擎不会改动它们。
         </p>
-
         {itemsLoading ? (
           <div role="status" aria-live="polite" className="flex min-h-40 items-center justify-center text-sm text-slate-500">
             <Loader2 className="mr-2 size-4 animate-spin" /> 加载对话历史…

@@ -445,4 +445,41 @@ export const api = {
       { method: "DELETE" },
       { unwrapItems: false }
     ),
+
+  // 蒸馏与候选审核
+  distillSession: (sessionID: string) =>
+    request<import("./types").DistillRunDetail>(
+      "/memory/distill",
+      { method: "POST", body: JSON.stringify({ session_id: sessionID }) },
+      { unwrapItems: false }
+    ),
+  listDistillRuns: (
+    params: { session_id?: string; status?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) => {
+    const qs = "?" + buildParams(params)
+    return request<import("./types").DistillRunListResponse>(
+      `/memory/distill/runs${qs}`,
+      { signal },
+      { unwrapItems: false }
+    )
+  },
+  getDistillRun: (runID: string, signal?: AbortSignal) =>
+    request<import("./types").DistillRunDetail>(
+      `/memory/distill/runs/${encodeURIComponent(runID)}`,
+      { signal },
+      { unwrapItems: false }
+    ),
+  promoteMemoryEntry: (id: string, reason?: string) =>
+    request<import("./types").PromoteEntryResponse>(
+      `/memory/entries/${encodeURIComponent(id)}/promote`,
+      { method: "POST", body: JSON.stringify(reason ? { reason } : {}) },
+      { unwrapItems: false }
+    ),
+  rejectMemoryEntry: (id: string, reason?: string) =>
+    request<import("./types").MemoryEntry>(
+      `/memory/entries/${encodeURIComponent(id)}/reject`,
+      { method: "POST", body: JSON.stringify(reason ? { reason } : {}) },
+      { unwrapItems: false }
+    ),
 }

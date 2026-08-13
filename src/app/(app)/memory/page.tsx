@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DistillReviewPanel } from "./distill-review-panel"
 
 const PAGE_SIZE = 20
 
@@ -184,11 +185,12 @@ export default function MemoryPage() {
         </p>
       </header>
 
+      <DistillReviewPanel onReviewed={() => void loadEntries(0, false)} />
+
       <section className="rounded-xl border border-[#1e1e2e] bg-[#101018] p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200">
           <Search className="size-4 text-violet-300" /> 语义检索
-        </div>
-        <form onSubmit={handleSearch} className="flex flex-col gap-2 md:flex-row">
+        </div>        <form onSubmit={handleSearch} className="flex flex-col gap-2 md:flex-row">
           <Input
             value={searchDraft}
             onChange={(event) => setSearchDraft(event.target.value)}

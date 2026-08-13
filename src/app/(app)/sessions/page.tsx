@@ -389,6 +389,7 @@ export default function WorkingSessionsPage() {
               onItemDeleted={handleItemDeleted}
               onSessionUpdated={handleSessionUpdated}
               onSessionDeleted={handleSessionDeleted}
+              onDistilled={() => void loadDetail(session.id)}
             />
           ) : null}
         </section>
