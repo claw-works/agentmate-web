@@ -6,8 +6,10 @@ import Link from "next/link"
 import {
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ExternalLink,
   FileText,
   X,
@@ -44,6 +46,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState("")
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
@@ -60,6 +63,7 @@ export default function HomePage() {
       if (cancelled) return
       setReports(reportData.items ?? [])
       setTotal(reportData.total ?? 0)
+      setCollapsedIds(new Set())
       setSources(sourceData ?? [])
       if (!activeSource && !activeTag) {
         setAllTotal(reportData.total ?? 0)
@@ -111,6 +115,24 @@ export default function HomePage() {
     if (nextPage === page) return
     setLoading(true)
     setPage(nextPage)
+  }
+
+  const toggleReportCollapsed = (id: string) => {
+    setCollapsedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const allCollapsed = reports.length > 0 && reports.every((report) => collapsedIds.has(report.id))
+
+  const toggleAllCollapsed = () => {
+    setCollapsedIds(allCollapsed ? new Set() : new Set(reports.map((report) => report.id)))
   }
 
   return (
@@ -184,19 +206,31 @@ export default function HomePage() {
                   共 {total} 篇，当前显示 {visibleStart}-{visibleEnd}
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-sm text-[#64736b]">
-                每页
-                <select
-                  value={pageSize}
-                  onChange={(event) => changePageSize(event.target.value)}
-                  className="h-9 rounded border border-[#cbd4cf] bg-white px-3 text-sm font-medium text-[#26382f] outline-none transition-colors focus:border-[#176a43] focus:ring-2 focus:ring-[#176a43]/15"
-                >
-                  {PAGE_SIZES.map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                篇
-              </label>
+              <div className="flex items-center gap-3">
+                {reports.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={toggleAllCollapsed}
+                    className="inline-flex h-9 items-center gap-1.5 rounded border border-[#cbd4cf] px-3 text-sm font-medium text-[#42524a] transition-colors hover:border-[#176a43] hover:text-[#176a43]"
+                  >
+                    {allCollapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+                    {allCollapsed ? "展开全部" : "收起全部"}
+                  </button>
+                ) : null}
+                <label className="flex items-center gap-2 text-sm text-[#64736b]">
+                  每页
+                  <select
+                    value={pageSize}
+                    onChange={(event) => changePageSize(event.target.value)}
+                    className="h-9 rounded border border-[#cbd4cf] bg-white px-3 text-sm font-medium text-[#26382f] outline-none transition-colors focus:border-[#176a43] focus:ring-2 focus:ring-[#176a43]/15"
+                  >
+                    {PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  篇
+                </label>
+              </div>
             </div>
 
             {activeTag ? (
@@ -240,79 +274,97 @@ export default function HomePage() {
 
             {loaded && !error && reports.length > 0 ? (
               <div className={loading ? "opacity-50 transition-opacity" : "transition-opacity"} aria-busy={loading}>
-                {reports.map((report) => (
-                  <article
-                    key={report.id}
-                    className="border-b border-[#dfe5e1] py-10 first:pt-8 last:border-b-0 sm:py-14"
-                  >
-                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[#718078]">
-                        <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5" />
-                          {formatDate(report.created_at)}
-                        </span>
-                        {report.source ? (
+                {reports.map((report) => {
+                  const isCollapsed = collapsedIds.has(report.id)
+                  return (
+                    <article
+                      key={report.id}
+                      className="border-b border-[#dfe5e1] py-10 first:pt-8 last:border-b-0 sm:py-14"
+                    >
+                      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[#718078]">
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarDays className="size-3.5" />
+                            {formatDate(report.created_at)}
+                          </span>
+                          {report.source ? (
+                            <button
+                              type="button"
+                              onClick={() => selectSource(report.source)}
+                              className="font-medium text-[#176a43] hover:underline"
+                            >
+                              {report.source}
+                            </button>
+                          ) : null}
+                          <span className="uppercase">{report.format}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/reports/${report.id}`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5d6c64] transition-colors hover:text-[#176a43]"
+                          >
+                            独立页面
+                            <ExternalLink className="size-3.5" />
+                          </Link>
                           <button
                             type="button"
-                            onClick={() => selectSource(report.source)}
-                            className="font-medium text-[#176a43] hover:underline"
+                            onClick={() => toggleReportCollapsed(report.id)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5d6c64] transition-colors hover:text-[#176a43]"
+                            aria-expanded={!isCollapsed}
                           >
-                            {report.source}
+                            {isCollapsed ? "展开" : "收起"}
+                            {isCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
                           </button>
-                        ) : null}
-                        <span className="uppercase">{report.format}</span>
-                      </div>
-                      <Link
-                        href={`/reports/${report.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5d6c64] transition-colors hover:text-[#176a43]"
-                      >
-                        独立页面
-                        <ExternalLink className="size-3.5" />
-                      </Link>
-                    </div>
-
-                    {!contentStartsWithTitle(report) ? (
-                      <h2 className="mb-7 text-2xl font-semibold leading-snug text-[#14231c] sm:text-3xl">
-                        {report.title}
-                      </h2>
-                    ) : null}
-
-                    {report.tags?.length ? (
-                      <div className="mb-7 flex flex-wrap gap-2">
-                        {report.tags.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => selectTag(tag)}
-                            className={`rounded border px-2.5 py-1 text-xs transition-colors ${
-                              activeTag === tag
-                                ? "border-[#176a43] bg-[#176a43] text-white"
-                                : "border-[#cfd8d3] text-[#527061] hover:border-[#176a43] hover:text-[#176a43]"
-                            }`}
-                          >
-                            #{tag}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {report.content ? (
-                      report.format === "html" ? (
-                        <div className="overflow-hidden border border-[#dfe5e1]">
-                          <HtmlReport report={report} />
                         </div>
-                      ) : (
-                        <div className="prose prose-slate max-w-none prose-headings:text-[#14231c] prose-a:text-[#176a43] prose-strong:text-[#20342a] prose-pre:bg-[#17201c]">
-                          <Markdown variant="light">{report.content}</Markdown>
-                        </div>
-                      )
-                    ) : (
-                      <div className="border-l-2 border-[#cbd4cf] py-3 pl-4 text-sm text-[#718078]">
-                        暂无正文。
                       </div>
-                    )}
-                  </article>
-                ))}
+
+                      {isCollapsed || !contentStartsWithTitle(report) ? (
+                        <h2 className="mb-7 text-2xl font-semibold leading-snug text-[#14231c] sm:text-3xl">
+                          {report.title}
+                        </h2>
+                      ) : null}
+
+                      {!isCollapsed ? (
+                        <>
+                          {report.tags?.length ? (
+                            <div className="mb-7 flex flex-wrap gap-2">
+                              {report.tags.map((tag) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => selectTag(tag)}
+                                  className={`rounded border px-2.5 py-1 text-xs transition-colors ${
+                                    activeTag === tag
+                                      ? "border-[#176a43] bg-[#176a43] text-white"
+                                      : "border-[#cfd8d3] text-[#527061] hover:border-[#176a43] hover:text-[#176a43]"
+                                  }`}
+                                >
+                                  #{tag}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {report.content ? (
+                            report.format === "html" ? (
+                              <div className="overflow-hidden border border-[#dfe5e1]">
+                                <HtmlReport report={report} />
+                              </div>
+                            ) : (
+                              <div className="prose prose-slate max-w-none prose-headings:text-[#14231c] prose-a:text-[#176a43] prose-strong:text-[#20342a] prose-pre:bg-[#17201c]">
+                                <Markdown variant="light">{report.content}</Markdown>
+                              </div>
+                            )
+                          ) : (
+                            <div className="border-l-2 border-[#cbd4cf] py-3 pl-4 text-sm text-[#718078]">
+                              暂无正文。
+                            </div>
+                          )}
+                        </>
+                      ) : null}
+                    </article>
+                  )
+                })}
               </div>
             ) : null}
 
