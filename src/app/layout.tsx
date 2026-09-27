@@ -23,6 +23,10 @@ const notoSansSC = Noto_Sans_SC({
 export const metadata: Metadata = {
   title: "AgentMate",
   description: "Personal productivity tools",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+  },
 }
 
 export default function RootLayout({

@@ -31,6 +31,52 @@ export interface ApiKey {
 export interface User {
   id: string
   email: string
+  role?: string
+}
+
+export interface AdminTenant {
+  id: string
+  name: string
+  account_count: number
+  created_at: string
+  revoked_at?: string
+}
+
+export interface AdminTenantSummary {
+  tenant_id: string
+  name: string
+  accounts: number
+  sessions: number
+  memories: number
+  pending_memories: number
+  ontology_spaces: number
+  actions: number
+  pending_actions: number
+  failed_actions: number
+}
+
+export interface AdminAccount {
+  id: string
+  name: string
+  external_ref?: string
+  key_count: number
+  created_at: string
+}
+
+export interface AdminRecord {
+  id: string
+  account_id: string
+  account_name: string
+  status?: string
+  title?: string
+  [key: string]: unknown
+}
+
+export interface AdminRecordPage {
+  items: AdminRecord[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface Report {
@@ -961,4 +1007,78 @@ export interface PromoteEntryResponse {
   entry: MemoryEntry
   /** 放行是候选第一次进检索索引，失败了必须报出来——否则会有一条"已放行却搜不到"的记忆。 */
   indexing?: { status: string; document_id?: string; error?: string }
+}
+
+export type ActionRunStatus =
+  | "proposed"
+  | "awaiting_confirmation"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "partial"
+  | "cancelled"
+
+export interface ActionRunStep {
+  id: string
+  action_run_id: string
+  step_kind: string
+  status: string
+  public_summary?: string
+  sequence: number
+  details: Record<string, unknown>
+  created_at: string
+}
+
+export interface ActionRun {
+  id: string
+  account_id: string
+  space_id: string
+  action_type_id: string
+  action_binding_id: string
+  capability_version_id: string
+  target_object_id: string
+  session_id?: string
+  idempotency_key: string
+  input: Record<string, unknown>
+  precondition_result: Record<string, unknown>
+  output: Record<string, unknown>
+  verification_result: Record<string, unknown>
+  confirmation_state: string
+  status: ActionRunStatus
+  error?: string
+  execution_mode: "sync" | "async"
+  attempt: number
+  max_attempts: number
+  cancel_requested: boolean
+  requested_by_user_id?: string
+  requested_by_key_id?: string
+  created_at: string
+  updated_at: string
+  confirmed_at?: string
+  started_at?: string
+  finished_at?: string
+  steps?: ActionRunStep[]
+}
+
+export interface ActionRunListResponse {
+  items: ActionRun[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface ActionRunStats {
+  total: number
+  by_status: Record<string, number>
+  average_latency_millis: number
+  average_attempts: number
+  stale_running: number
+  awaiting_confirmation: number
+  verification_attention: number
+}
+
+export interface ActionRunHealth {
+  status: "healthy" | "warning" | "critical"
+  stats: ActionRunStats
+  alerts: { code: string; severity: string; message: string; value: unknown }[]
 }

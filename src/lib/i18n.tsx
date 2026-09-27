@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 type Lang = 'zh' | 'en'
 
 interface Translations {
-  nav: { dashboard: string; todos: string; notes: string; reports: string; bookmarks: string; expenses: string; skills: string; knowledge: string; memory: string; sessions: string; apikeys: string; logout: string }
+  nav: { dashboard: string; todos: string; notes: string; reports: string; bookmarks: string; expenses: string; skills: string; knowledge: string; memory: string; sessions: string; ontology: string; apikeys: string; logout: string; groupOutput: string }
   common: { save: string; cancel: string; delete: string; edit: string; search: string; create: string; back: string; loading: string; noContent: string; copyContent: string; copied: string; export: string; all: string; confirm: string; confirmDelete: string; deleteWarning: string }
   dashboard: { title: string; pendingTodos: string; overdueTodos: string; unreadBookmarks: string; monthlyExpense: string; recentReports: string; viewAll: string }
   todos: { title: string; subtitle: string; newTodo: string; pending: string; inProgress: string; done: string; high: string; medium: string; low: string; noTodos: string }
@@ -13,12 +13,13 @@ interface Translations {
   bookmarks: { title: string; subtitle: string; newBookmark: string; unread: string; read: string; openInBrowser: string }
   expenses: { title: string; subtitle: string; newExpense: string; totalExpense: string; amount: string; description: string }
   skills: { title: string; subtitle: string; totalRuns: string; successRate: string; failureRate: string; correctionRate: string; signals: string; versions: string; logs: string; activeVersion: string }
+  ontology: { title: string; subtitle: string; comingSoon: string; comingSoonDesc: string }
   login: { title: string; email: string; password: string; signIn: string; signingIn: string; checking: string; noAccount: string; haveAccount: string; register: string; registering: string; confirmPassword: string; passwordMismatch: string }
 }
 
 const translations: Record<Lang, Translations> = {
   zh: {
-    nav: { dashboard: '首页', todos: '待办', notes: '随手记', reports: '报告', bookmarks: '书签', expenses: '记账', skills: '技能', knowledge: '知识库', memory: '记忆', sessions: '会话记录', apikeys: 'API Keys', logout: '退出' },
+    nav: { dashboard: '首页', todos: '待办', notes: '随手记', reports: '报告', bookmarks: '书签', expenses: '记账', skills: '技能', knowledge: '知识库', memory: '记忆', sessions: '会话记录', ontology: '本体', apikeys: 'API Keys', logout: '退出', groupOutput: '产出' },
     common: { save: '保存', cancel: '取消', delete: '删除', edit: '编辑', search: '搜索', create: '新建', back: '← 返回', loading: '加载中...', noContent: '暂无内容', copyContent: '复制内容', copied: '已复制 ✓', export: '导出', all: '全部', confirm: '确认', confirmDelete: '确认删除？', deleteWarning: '此操作不可撤销。' },
     dashboard: { title: '首页', pendingTodos: '待完成', overdueTodos: '已逾期', unreadBookmarks: '未读书签', monthlyExpense: '本月支出', recentReports: '最近报告', viewAll: '查看全部' },
     todos: { title: '待办事项', subtitle: '管理你的任务', newTodo: '新建待办', pending: '待开始', inProgress: '进行中', done: '已完成', high: '高', medium: '中', low: '低', noTodos: '暂无待办' },
@@ -27,10 +28,11 @@ const translations: Record<Lang, Translations> = {
     bookmarks: { title: '书签', subtitle: '收藏的链接和文章', newBookmark: '添加书签', unread: '未读', read: '已读', openInBrowser: '在浏览器中打开' },
     expenses: { title: '记账', subtitle: '追踪你的支出', newExpense: '记一笔', totalExpense: '总支出', amount: '金额', description: '描述' },
     skills: { title: '技能注册', subtitle: '管理 Agent 技能', totalRuns: '总运行', successRate: '成功率', failureRate: '失败率', correctionRate: '纠正率', signals: '信号', versions: '版本', logs: '日志', activeVersion: '当前版本' },
+    ontology: { title: '本体', subtitle: '本体模型与 Schema 注册表', comingSoon: '本体管理开发中', comingSoonDesc: '本体空间、Schema 版本与运行时对象图即将上线。' },
     login: { title: '登录', email: '邮箱', password: '密码', signIn: '登录', signingIn: '登录中...', checking: '正在检查登录状态...', noAccount: '还没有账号？', haveAccount: '已有账号？', register: '注册', registering: '注册中...', confirmPassword: '确认密码', passwordMismatch: '两次输入的密码不一致' },
   },
   en: {
-    nav: { dashboard: 'Dashboard', todos: 'Todos', notes: 'Notes', reports: 'Reports', bookmarks: 'Bookmarks', expenses: 'Expenses', skills: 'Skills', knowledge: 'Knowledge', memory: 'Memory', sessions: 'Sessions', apikeys: 'API Keys', logout: 'Logout' },
+    nav: { dashboard: 'Dashboard', todos: 'Todos', notes: 'Notes', reports: 'Reports', bookmarks: 'Bookmarks', expenses: 'Expenses', skills: 'Skills', knowledge: 'Knowledge', memory: 'Memory', sessions: 'Sessions', ontology: 'Ontology', apikeys: 'API Keys', logout: 'Logout', groupOutput: 'Output' },
     common: { save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', search: 'Search', create: 'Create', back: '← Back', loading: 'Loading...', noContent: 'No content', copyContent: 'Copy content', copied: 'Copied ✓', export: 'Export', all: 'All', confirm: 'Confirm', confirmDelete: 'Delete?', deleteWarning: 'This action cannot be undone.' },
     dashboard: { title: 'Dashboard', pendingTodos: 'Pending', overdueTodos: 'Overdue', unreadBookmarks: 'Unread Bookmarks', monthlyExpense: 'Monthly Expense', recentReports: 'Recent Reports', viewAll: 'View All' },
     todos: { title: 'Todos', subtitle: 'Manage your tasks', newTodo: 'New Todo', pending: 'Pending', inProgress: 'In Progress', done: 'Done', high: 'High', medium: 'Medium', low: 'Low', noTodos: 'No todos found.' },
@@ -39,6 +41,7 @@ const translations: Record<Lang, Translations> = {
     bookmarks: { title: 'Bookmarks', subtitle: 'Saved links and articles', newBookmark: 'Add Bookmark', unread: 'Unread', read: 'Read', openInBrowser: 'Open in browser' },
     expenses: { title: 'Expenses', subtitle: 'Track your spending', newExpense: 'New Expense', totalExpense: 'Total', amount: 'Amount', description: 'Description' },
     skills: { title: 'Skill Registry', subtitle: 'Manage agent skills', totalRuns: 'Total Runs', successRate: 'Success Rate', failureRate: 'Failure Rate', correctionRate: 'Correction Rate', signals: 'Signals', versions: 'Versions', logs: 'Logs', activeVersion: 'Active Version' },
+    ontology: { title: 'Ontology', subtitle: 'Ontology model and schema registry', comingSoon: 'Ontology management coming soon', comingSoonDesc: 'Ontology spaces, schema versions, and the runtime object graph are on the way.' },
     login: { title: 'Sign In', email: 'Email', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...', checking: 'Checking login status...', noAccount: "Don't have an account?", haveAccount: 'Already have an account?', register: 'Register', registering: 'Registering...', confirmPassword: 'Confirm Password', passwordMismatch: 'Passwords do not match' },
   },
 }

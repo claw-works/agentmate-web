@@ -61,7 +61,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
-  me: () => request<{ id: string; email: string }>("/auth/me"),
+  me: () => request<import("./types").User>("/auth/me"),
   createApiKey: (name: string) =>
     request<{ id: string; key: string }>("/auth/apikeys", {
       method: "POST",
@@ -480,6 +480,89 @@ export const api = {
     request<import("./types").MemoryEntry>(
       `/memory/entries/${encodeURIComponent(id)}/reject`,
       { method: "POST", body: JSON.stringify(reason ? { reason } : {}) },
+      { unwrapItems: false }
+    ),
+
+  // Ontology ActionRun operations
+  listActionRuns: (
+    params: { status?: string; action_key?: string; limit?: number; offset?: number } = {},
+    signal?: AbortSignal
+  ) =>
+    request<import("./types").ActionRunListResponse>(
+      `/ontology/action-runs?${buildParams(params)}`,
+      { signal },
+      { unwrapItems: false }
+    ),
+  getActionRun: (id: string, signal?: AbortSignal) =>
+    request<import("./types").ActionRun>(`/ontology/action-runs/${encodeURIComponent(id)}`, { signal }),
+  getActionRunHealth: (signal?: AbortSignal) =>
+    request<import("./types").ActionRunHealth>("/ontology/action-run-health", { signal }, { unwrapItems: false }),
+  confirmActionRun: (id: string, approved: boolean, reason?: string) =>
+    request<import("./types").ActionRun>(`/ontology/action-runs/${encodeURIComponent(id)}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ approved, reason: reason || "" }),
+    }),
+  retryActionRun: (id: string) =>
+    request<import("./types").ActionRun>(`/ontology/action-runs/${encodeURIComponent(id)}/retry`, { method: "POST" }),
+  reverifyActionRun: (id: string) =>
+    request<import("./types").ActionRun>(`/ontology/action-runs/${encodeURIComponent(id)}/reverify`, { method: "POST" }),
+
+  // Platform admin console
+  adminTenants: () => request<import("./types").AdminTenant[]>("/admin/tenants"),
+  adminTenantSummary: (tenantID: string) =>
+    request<import("./types").AdminTenantSummary>(`/admin/tenants/${encodeURIComponent(tenantID)}/summary`),
+  adminTenantAccounts: (tenantID: string) =>
+    request<import("./types").AdminAccount[]>(`/admin/tenants/${encodeURIComponent(tenantID)}/accounts`),
+  adminTenantSession: (tenantID: string, sessionID: string) =>
+    request<{ session: import("./types").AdminRecord; items: import("./types").AdminRecord[] }>(
+      `/admin/tenants/${encodeURIComponent(tenantID)}/sessions/${encodeURIComponent(sessionID)}`,
+      {},
+      { unwrapItems: false }
+    ),
+  adminTenantDistillRun: (tenantID: string, runID: string) =>
+    request<{
+      run: import("./types").AdminRecord
+      source_items: import("./types").AdminRecord[]
+      candidates: import("./types").AdminRecord[]
+    }>(
+      `/admin/tenants/${encodeURIComponent(tenantID)}/distill-runs/${encodeURIComponent(runID)}`,
+      {},
+      { unwrapItems: false }
+    ),
+  adminTenantRecords: (
+    tenantID: string,
+    resource: "sessions" | "memory" | "distill-runs" | "ontology/spaces",
+    params: { accountID?: string; limit?: number; offset?: number } = {}
+  ) =>
+    request<import("./types").AdminRecordPage>(
+      `/admin/tenants/${encodeURIComponent(tenantID)}/${resource}?${buildParams({
+        account_id: params.accountID, limit: params.limit, offset: params.offset,
+      })}`,
+      {},
+      { unwrapItems: false }
+    ),
+  adminActionRuns: (
+    tenantID: string,
+    params: { status?: string; accountID?: string; limit?: number; offset?: number } = {}
+  ) =>
+    request<import("./types").AdminRecordPage>(
+      `/admin/ontology/action-runs?${buildParams({
+        tenant_id: tenantID, status: params.status, account_id: params.accountID,
+        limit: params.limit, offset: params.offset,
+      })}`,
+      {},
+      { unwrapItems: false }
+    ),
+  adminActionHealth: () =>
+    request<{ status: string; alerts: { code: string; severity: string; message: string; value: unknown }[] }>(
+      "/admin/ontology/action-run-health",
+      {},
+      { unwrapItems: false }
+    ),
+  adminRetryAction: (id: string, accountID: string) =>
+    request<{ status: string }>(
+      `/admin/ontology/action-runs/${encodeURIComponent(id)}/retry?account_id=${encodeURIComponent(accountID)}`,
+      { method: "POST" },
       { unwrapItems: false }
     ),
 }
