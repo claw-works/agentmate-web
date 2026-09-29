@@ -1,15 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, ChevronRight, Database, Network, RefreshCw, ShieldCheck, Workflow, type LucideIcon } from "lucide-react"
+import { Activity, AlertTriangle, Building2, ChevronRight, Database, FileText, KeyRound, Network, RefreshCw, ShieldCheck, Users, Workflow, type LucideIcon } from "lucide-react"
 import { api } from "@/lib/api"
-import type { AdminAccount, AdminRecord, AdminTenant, AdminTenantSummary } from "@/lib/types"
+import type { AdminAccount, AdminRecord, AdminStats, AdminTenant, AdminTenantSummary } from "@/lib/types"
 
-type Tab = "overview" | "sessions" | "memory" | "distill-runs" | "ontology/spaces" | "actions"
+type PlatformSection = "tenants" | "users" | "apikeys" | "usage" | "reports"
+type Tab = "overview" | "sessions" | "memory" | "distill-runs" | "knowledge" | "ontology/spaces" | "actions"
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "概览" }, { id: "sessions", label: "Sessions" },
   { id: "memory", label: "记忆" }, { id: "distill-runs", label: "蒸馏" },
-  { id: "ontology/spaces", label: "本体" }, { id: "actions", label: "Actions" },
+  { id: "knowledge", label: "知识库" }, { id: "ontology/spaces", label: "本体" },
+  { id: "actions", label: "Actions" },
 ]
 
 function text(value: unknown) {
@@ -33,6 +35,12 @@ const labels: Record<string, string> = {
   updated_at: "更新时间", started_at: "开始时间", finished_at: "完成时间",
   from_seq: "起始序号", to_seq: "结束序号", role: "角色", item_type: "条目类型",
   seq: "序号", metadata: "附加信息", description: "描述",
+  type: "类型", domain: "领域", repository_url: "仓库地址", package_path: "包路径",
+  default_ref: "默认分支", sync_mode: "同步模式", revision_count: "Revision 数",
+  document_count: "文档数", wiki_page_count: "Wiki 页面数",
+  user_email: "用户", key_prefix: "Key 前缀", total_calls: "总调用",
+  today_calls: "24 小时调用", last_used_at: "最后使用", email: "邮箱",
+  format: "格式", source: "来源", tags: "标签",
 }
 const hiddenDetailKeys = new Set([
   "id", "account_id", "session_id", "distill_run_id", "target_object_id",
@@ -55,7 +63,7 @@ function DetailFields({ record, exclude = [] }: { record: Record<string, unknown
   )}</dl>
 }
 
-export default function AdminPage() {
+function TenantConsole() {
   const [tenants, setTenants] = useState<AdminTenant[]>([])
   const [tenantID, setTenantID] = useState("")
   const [accounts, setAccounts] = useState<AdminAccount[]>([])
@@ -127,6 +135,7 @@ export default function AdminPage() {
     sessions: ["account_name", "title", "agent", "engine", "namespace", "status", "last_seq", "distilled_seq", "updated_at"],
     memory: ["account_name", "memory_type", "title", "summary", "namespace", "status", "confidence", "updated_at"],
     "distill-runs": ["account_name", "session_title", "trigger", "status", "items_examined", "candidates_written", "attempt", "error", "updated_at"],
+    knowledge: ["account_name", "name", "type", "domain", "status", "revision_count", "document_count", "wiki_page_count", "updated_at"],
     "ontology/spaces": ["account_name", "name", "slug", "status", "enforcement_mode", "object_count", "updated_at"],
     actions: ["account_name", "action_key", "status", "confirmation_state", "execution_mode", "attempt", "error", "updated_at"],
   }
@@ -172,11 +181,12 @@ export default function AdminPage() {
       这里展示的是蒸馏任务运行记录，不是长期记忆条目；“运行错误”仅用于排障。真正写入的结果请在“记忆”中查看。
     </div>}
 
-    {summary && <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+    {summary && <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-9">
       {([
         ["Accounts", summary.accounts, Database], ["Sessions", summary.sessions, Workflow],
         ["Memories", summary.memories, Database], ["待审核记忆", summary.pending_memories, AlertTriangle],
-        ["Ontology", summary.ontology_spaces, Network], ["Actions", summary.actions, ShieldCheck],
+        ["知识库", summary.knowledge_sources, FileText], ["Ontology", summary.ontology_spaces, Network],
+        ["Actions", summary.actions, ShieldCheck],
         ["待审批", summary.pending_actions, AlertTriangle], ["失败", summary.failed_actions, AlertTriangle],
       ] as [string, number, LucideIcon][]).map(([label, value, Icon]) => <div key={label} className="rounded-xl border border-[#202031] bg-[#0d0d17] p-3"><Icon className="mb-3 size-4 text-indigo-400" /><div className="text-xl font-semibold">{value}</div><div className="text-xs text-slate-500">{label}</div></div>)}
     </div>}
@@ -229,5 +239,84 @@ export default function AdminPage() {
       </>}
       {!detailLoading && tab !== "sessions" && tab !== "distill-runs" && <div className="mt-5"><DetailFields record={selected} /></div>}
     </aside></div>}
+  </div>
+}
+
+const platformSections: { id: PlatformSection; label: string; icon: LucideIcon }[] = [
+  { id: "tenants", label: "租户可观测", icon: Building2 },
+  { id: "users", label: "用户管理", icon: Users },
+  { id: "apikeys", label: "API Keys", icon: KeyRound },
+  { id: "usage", label: "API 使用量", icon: Activity },
+  { id: "reports", label: "Reports", icon: FileText },
+]
+
+const platformColumns: Record<Exclude<PlatformSection, "tenants">, string[]> = {
+  users: ["email", "role", "created_at"],
+  apikeys: ["name", "user_email", "key_prefix", "created_at"],
+  usage: ["key_name", "key_prefix", "user_email", "total_calls", "today_calls", "last_used_at"],
+  reports: ["title", "format", "tags", "source", "user_email", "created_at"],
+}
+
+function PlatformRecords({ section }: { section: Exclude<PlatformSection, "tenants"> }) {
+  const [records, setRecords] = useState<AdminRecord[]>([])
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [selected, setSelected] = useState<AdminRecord | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const loaders = {
+        users: api.adminUsers,
+        apikeys: api.adminAPIKeys,
+        usage: api.adminUsage,
+        reports: api.adminReports,
+      }
+      const [items, currentStats] = await Promise.all([loaders[section](), api.adminStats()])
+      setRecords(items)
+      setStats(currentStats)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "加载平台数据失败")
+    } finally {
+      setLoading(false)
+    }
+  }, [section])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0)
+    return () => window.clearTimeout(timer)
+  }, [load])
+
+  const columns = platformColumns[section]
+  return <div className="space-y-5">
+    {stats && <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      {Object.entries({ 用户: stats.users, "API Keys": stats.api_keys, Todos: stats.todos, Notes: stats.notes, Reports: stats.reports }).map(([label, value]) =>
+        <div key={label} className="rounded-xl border border-[#202031] bg-[#0d0d17] p-4"><div className="text-2xl font-semibold">{value}</div><div className="mt-1 text-xs text-slate-500">{label}</div></div>
+      )}
+    </div>}
+    <div className="flex items-center justify-between"><div><h1 className="text-2xl font-semibold">{platformSections.find(item => item.id === section)?.label}</h1><p className="mt-1 text-sm text-slate-500">平台级数据，不受单个租户筛选限制。</p></div><button onClick={() => void load()} className="rounded-lg border border-[#29293b] p-2 text-slate-400 hover:text-white"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /></button></div>
+    {error && <div className="rounded-lg border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>}
+    <div className="overflow-hidden rounded-xl border border-[#202031] bg-[#0d0d17]">
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-[#202031] text-xs uppercase text-slate-600"><tr>{columns.map(column => <th key={column} className="px-4 py-3">{labels[column] || column.replaceAll("_", " ")}</th>)}<th /></tr></thead>
+        <tbody className="divide-y divide-[#1b1b2b]">{records.map(record => <tr key={record.id} onClick={() => setSelected(record)} className="cursor-pointer hover:bg-white/[.025]">{columns.map(column => <td key={column} className="max-w-96 truncate px-4 py-3 text-slate-400" title={text(record[column])}>{text(record[column])}</td>)}<td className="w-10 pr-3 text-slate-700"><ChevronRight className="size-4" /></td></tr>)}</tbody>
+      </table></div>
+      {!loading && records.length === 0 && <div className="p-12 text-center text-sm text-slate-600">暂无数据</div>}
+    </div>
+    {selected && <div className="fixed inset-0 z-30 flex justify-end bg-black/60" onClick={() => setSelected(null)}><aside onClick={event => event.stopPropagation()} className="h-full w-full max-w-2xl overflow-auto border-l border-[#29293b] bg-[#0d0d17] p-6"><div className="flex justify-between"><h2 className="font-medium">记录详情</h2><button onClick={() => setSelected(null)} className="text-slate-500">关闭</button></div><div className="mt-5"><DetailFields record={selected} /></div></aside></div>}
+  </div>
+}
+
+export default function AdminPage() {
+  const [section, setSection] = useState<PlatformSection>("tenants")
+  return <div className="mx-auto max-w-[1600px]">
+    <nav className="mb-6 flex flex-wrap gap-2 rounded-xl border border-[#202031] bg-[#0d0d17] p-2">
+      {platformSections.map(item => {
+        const Icon = item.icon
+        return <button key={item.id} onClick={() => setSection(item.id)} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm ${section === item.id ? "bg-indigo-500/15 text-indigo-300" : "text-slate-500 hover:bg-white/[.03] hover:text-slate-200"}`}><Icon className="size-4" />{item.label}</button>
+      })}
+    </nav>
+    {section === "tenants" ? <TenantConsole /> : <PlatformRecords section={section} />}
   </div>
 }

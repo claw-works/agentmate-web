@@ -508,6 +508,11 @@ export const api = {
     request<import("./types").ActionRun>(`/ontology/action-runs/${encodeURIComponent(id)}/reverify`, { method: "POST" }),
 
   // Platform admin console
+  adminStats: () => request<import("./types").AdminStats>("/admin/stats"),
+  adminUsers: () => request<import("./types").AdminRecord[]>("/admin/users"),
+  adminAPIKeys: () => request<import("./types").AdminRecord[]>("/admin/apikeys"),
+  adminUsage: () => request<import("./types").AdminRecord[]>("/admin/usage"),
+  adminReports: () => request<import("./types").AdminRecord[]>("/admin/reports"),
   adminTenants: () => request<import("./types").AdminTenant[]>("/admin/tenants"),
   adminTenantSummary: (tenantID: string) =>
     request<import("./types").AdminTenantSummary>(`/admin/tenants/${encodeURIComponent(tenantID)}/summary`),
@@ -531,7 +536,7 @@ export const api = {
     ),
   adminTenantRecords: (
     tenantID: string,
-    resource: "sessions" | "memory" | "distill-runs" | "ontology/spaces",
+    resource: "sessions" | "memory" | "distill-runs" | "knowledge" | "ontology/spaces",
     params: { accountID?: string; limit?: number; offset?: number } = {}
   ) =>
     request<import("./types").AdminRecordPage>(

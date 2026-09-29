@@ -49,10 +49,19 @@ export interface AdminTenantSummary {
   sessions: number
   memories: number
   pending_memories: number
+  knowledge_sources: number
   ontology_spaces: number
   actions: number
   pending_actions: number
   failed_actions: number
+}
+
+export interface AdminStats {
+  users: number
+  api_keys: number
+  todos: number
+  notes: number
+  reports: number
 }
 
 export interface AdminAccount {

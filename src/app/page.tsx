@@ -148,13 +148,18 @@ export default function HomePage() {
               <span className="block text-xs text-[#718078]">Public Reports</span>
             </span>
           </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-md border border-[#cbd4cf] px-3 py-2 text-sm font-medium text-[#30443a] transition-colors hover:border-[#176a43] hover:text-[#176a43]"
-          >
-            进入后台
-            <ArrowRight className="size-4" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/news" className="rounded-md px-3 py-2 text-sm font-medium text-[#30443a] transition-colors hover:bg-[#f3f7f5] hover:text-[#176a43]">
+              最新信息
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-md border border-[#cbd4cf] px-3 py-2 text-sm font-medium text-[#30443a] transition-colors hover:border-[#176a43] hover:text-[#176a43]"
+            >
+              <span className="hidden sm:inline">进入后台</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </div>
       </header>
 
